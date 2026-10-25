@@ -334,7 +334,7 @@ function kindRow(k){for(var i=0;i<DEVICE_KINDS.length;i++)if(DEVICE_KINDS[i][0]=
 function kindOpts(){return DEVICE_KINDS.map(function(k){return [k[0],k[1]]})}
 function portsTxt(d){return d.portCount?d.portCount+(d.kind==='pdu'||d.kind==='ups'?' outlets':' ports'):(d.kind==='pdu'||d.kind==='ups'?'no outlets':'no ports')}
 function deviceColor(d){return d.color||DEV_FALLBACK[d.kind]||'#2563eb'}
-var APP_VERSION='3.1.0'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
+var APP_VERSION='3.1.1'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
 
 var Q='"'; // double-quote char used when building the cable rows on the Labels tab
 function siteFold(){var c={};(S.sites||[]).forEach(function(st,i){if(i>0)c[st.id]=true});return c}
@@ -2612,8 +2612,8 @@ function authBox(mode,msg){mode=mode||ui.authMode||'in';ui.authMode=mode;closeOv
   var o=ovl('authov','<div class="brand" style="padding:0 0 10px"><span class="mk" aria-hidden="true"><i></i><i></i><i></i></span><b>Closet Mapper</b></div>'+
     '<div class="seg"><button data-am="in" class="'+(mode==='in'?'on':'')+'">Sign in</button><button data-am="up" class="'+(mode==='up'?'on':'')+'">Create account</button></div>'+
     (msg?'<div class="card" style="margin:10px 0;border-left:3px solid var(--ok)">'+msg+'</div>':'')+
-    '<button type="button" id="aMs" class="msbtn"><svg width="18" height="18" viewBox="0 0 21 21" aria-hidden="true"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>Sign in with Microsoft</button>'+
-    '<div class="orline"><span>or use your email</span></div>'+
+    '<button type="button" id="aMs" class="msbtn" style="display:none"><svg width="18" height="18" viewBox="0 0 21 21" aria-hidden="true"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>Sign in with Microsoft</button>'+
+    '<div class="orline" id="aOr" style="display:none"><span>or use your email</span></div>'+
     '<form id="authF"><label>Email<input id="aE" type="email" autocomplete="email" required></label>'+
     (mode!=='link'?'<label>Password<input id="aP" type="password" autocomplete="'+(mode==='up'?'new-password':'current-password')+'" minlength="8" required></label>':'')+
     '<div id="aErr" style="color:var(--bad);font-size:13px;min-height:18px;margin-top:6px"></div>'+
@@ -2621,6 +2621,8 @@ function authBox(mode,msg){mode=mode||ui.authMode||'in';ui.authMode=mode;closeOv
     '<div class="row" style="justify-content:space-between;margin-top:10px;font-size:13px">'+(mode==='link'?'<a href="#" id="aPw">Use a password instead</a>':'<a href="#" id="aLink">Email me a sign-in link instead</a>')+(mode==='in'?'<a href="#" id="aForgot">Forgot password?</a>':'')+'</div>'+
     '<p class="muted" style="font-size:12px;margin:14px 0 0">Your map is stored in your team’s account and loads on any device you sign in on.</p>');
   o.querySelectorAll('[data-am]').forEach(function(b){b.onclick=function(){authBox(b.getAttribute('data-am'))}});
+  // only offer Microsoft once it is switched on in Supabase (otherwise Supabase shows a raw error page)
+  msEnabled().then(function(on){if(on&&el('aMs')){el('aMs').style.display='';el('aOr').style.display=''}});
   el('aMs').onclick=function(){var b=el('aMs');b.disabled=true;el('aErr').textContent='';
     SB.auth.signInWithOAuth({provider:'azure',options:{scopes:'email openid profile',redirectTo:location.origin+location.pathname}}).then(function(r){if(r.error){b.disabled=false;
       el('aErr').textContent=/not enabled|Unsupported provider/i.test(r.error.message)?'Microsoft sign-in is not switched on yet — use your email for now.':r.error.message}}).catch(function(e){b.disabled=false;el('aErr').textContent=String(e.message||e)})};
@@ -2635,6 +2637,9 @@ function authBox(mode,msg){mode=mode||ui.authMode||'in';ui.authMode=mode;closeOv
       else if(mode==='up'&&!r.data.session)authBox('in','Account created. Check your email and click the link to confirm it, then sign in.');
       else if(r.data.session)afterLogin(r.data.session.user)}).catch(function(err){btn.disabled=false;el('aErr').textContent=String(err.message||err)})};
   setTimeout(function(){var f=el('aE');if(f)f.focus()},0)}
+var msOn=null;
+function msEnabled(){if(msOn!==null)return Promise.resolve(msOn);
+  return fetch(CLOUD.url+'/auth/v1/settings',{headers:{apikey:CLOUD.key}}).then(function(r){return r.json()}).then(function(j){msOn=!!(j&&j.external&&j.external.azure);return msOn}).catch(function(){return false})}
 function newPasswordBox(){var o=ovl('pwov','<h2 style="margin-top:0">Choose a new password</h2><form id="npF"><label>New password<input id="npP" type="password" minlength="8" required autocomplete="new-password"></label><div id="npE" style="color:var(--bad);font-size:13px;min-height:18px"></div><button class="pri" type="submit" style="width:100%">Save password</button></form>',62);
   el('npF').onsubmit=function(e){e.preventDefault();SB.auth.updateUser({password:el('npP').value}).then(function(r){if(r.error){el('npE').textContent=r.error.message;return}closeOvl('pwov');toast('Password changed.')})}}
 function signOut(){if(CS.gen!==CS.pushedGen&&!confirm('Some changes have not reached the server yet. Sign out anyway?'))return;
