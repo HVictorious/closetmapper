@@ -263,6 +263,7 @@ td input:focus{background:var(--accent-soft);outline:1px solid var(--accent)}
 .msbtn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:10px;margin:8px 0 2px;background:#fff;color:#1b1b1b;border:1px solid #8c8c8c;border-radius:4px;font-weight:600}
 .msbtn:hover{background:#f3f3f3;border-color:#5e5e5e}
 .orline{display:flex;align-items:center;gap:10px;color:var(--faint);font-size:12px;margin:12px 0 2px}.orline::before,.orline::after{content:"";flex:1;height:1px;background:var(--line2)}
+.blk{list-style:none;margin:0;padding:0}.blk li{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-top:1px solid var(--line)}
 /* ---- labels (always print-white) ---- */
 .lbl{display:flex;align-items:center;gap:.06in;padding:.04in .08in;border:1px dashed #9ca3af;background:#fff;overflow:hidden;line-height:1.15;color:#000}
 @media print{
@@ -334,7 +335,7 @@ function kindRow(k){for(var i=0;i<DEVICE_KINDS.length;i++)if(DEVICE_KINDS[i][0]=
 function kindOpts(){return DEVICE_KINDS.map(function(k){return [k[0],k[1]]})}
 function portsTxt(d){return d.portCount?d.portCount+(d.kind==='pdu'||d.kind==='ups'?' outlets':' ports'):(d.kind==='pdu'||d.kind==='ups'?'no outlets':'no ports')}
 function deviceColor(d){return d.color||DEV_FALLBACK[d.kind]||'#2563eb'}
-var APP_VERSION='3.2.0'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
+var APP_VERSION='3.2.1'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
 
 var Q='"'; // double-quote char used when building the cable rows on the Labels tab
 function siteFold(){var c={};(S.sites||[]).forEach(function(st,i){if(i>0)c[st.id]=true});return c}
@@ -510,10 +511,19 @@ function addSite(){modal('New site',[{label:'Name (building, campus…)'}],funct
   if(!v[0].trim()){toast('Give the site a name.',1);return false}
   S.sites.push({id:uid(),name:v[0].trim()});commit()})}
 function renameSite(st){modal('Site',[{label:'Name',value:st.name}],function(v){st.name=v[0].trim()||st.name;commit()})}
-function delSite(st){var n=S.locations.filter(function(l){return l.siteId===st.id}).length;
-  if(!confirm('Delete the site "'+st.name+'"?'+(n?' Its '+n+' location'+(n===1?'':'s')+' will stay, under "No site".':'')))return;
-  S.locations.forEach(function(l){if(l.siteId===st.id)l.siteId=''});
-  S.sites=S.sites.filter(function(x){return x!==st});commit()}
+// a site or closet can only go once it is empty: delete its racks (and their devices) first, then type the name
+function blockedDelete(title,msg,locs){
+  modal(title,[],null,function(){var box=el('mbox'),w=document.createElement('div');w.style.width='min(480px,86vw)';
+    w.innerHTML='<p style="margin:0 0 10px">'+msg+'</p>'+(locs.length?'<ul class="blk">'+locs.map(function(x){return '<li><span><b>'+esc(x.l.label||x.l.name)+'</b> <span class="muted">'+x.r+' rack'+(x.r===1?'':'s')+', '+x.d+' device'+(x.d===1?'':'s')+'</span></span><button class="ib" data-gol="'+x.l.id+'">Open</button></li>'}).join('')+'</ul>':'')+
+      '<p class="muted" style="font-size:12px;margin:10px 0 0">This protects your map from being wiped out by one click. Delete each rack from the Map tab (✕ on the rack) — you will type its name to confirm.</p>';
+    box.insertBefore(w,el('mok').parentNode);el('mok').style.display='none';el('mno').textContent='OK';
+    w.querySelectorAll('[data-gol]').forEach(function(b){b.onclick=function(){el('modal').style.display='none';ui.loc=b.getAttribute('data-gol');ui.rack=null;ui.dev=null;ui.view='map';render()}})})}
+function locLoad(l){var rs=S.racks.filter(function(r){return r.locId===l.id}),ids={};rs.forEach(function(r){ids[r.id]=1});return {l:l,r:rs.length,d:S.devices.filter(function(d){return ids[d.rackId]}).length}}
+function delSite(st){var ls=S.locations.filter(function(l){return l.siteId===st.id}),busy=ls.map(locLoad).filter(function(x){return x.r||x.d});
+  if(busy.length)return blockedDelete('Can’t delete “'+st.name+'” yet','This site still has racks and devices in '+busy.length+' closet'+(busy.length===1?'':'s')+'. Delete them first, then the site.',busy);
+  typeToDelete('site',st.name,'This removes the site'+(ls.length?' and its <b>'+ls.length+' empty closet'+(ls.length===1?'':'s')+'</b> ('+ls.map(function(l){return esc(l.label||l.name)}).join(', ')+')':'')+'. You can undo it with Ctrl+Z straight away.',function(){
+    var gone={};ls.forEach(function(l){gone[l.id]=1});S.locations=S.locations.filter(function(l){return !gone[l.id]});S.sites=S.sites.filter(function(x){return x!==st});
+    if(gone[ui.loc])ui.loc=S.locations.length?S.locations[0].id:null;commit()})}
 function placeLoc(id,siteId,beforeId){var l=byId(S.locations,id);if(!l)return;
   S.locations=S.locations.filter(function(x){return x!==l});l.siteId=siteId||'';
   var i=beforeId?S.locations.indexOf(byId(S.locations,beforeId)):-1;
@@ -533,11 +543,11 @@ function addLocation(){var cur=byId(S.locations,ui.loc),hasS=S.sites.length>0;
   var last=-1;S.locations.forEach(function(x,k){if((x.siteId||'')===l.siteId)last=k});
   S.locations.splice(last<0?S.locations.length:last+1,0,l);ui.loc=l.id;commit()})}
 
-function delLocation(id){if(!confirm('Delete this location, its racks, devices and cables?'))return;
-  var rs=S.racks.filter(function(r){return r.locId===id});
-  rs.forEach(function(r){delRack(r.id,true)});
-  S.locations=S.locations.filter(function(l){return l.id!==id});
-  if(ui.loc===id)ui.loc=S.locations.length?S.locations[0].id:null;commit()}
+function delLocation(id){var l=byId(S.locations,id);if(!l)return;var ld=locLoad(l);
+  if(ld.r||ld.d)return blockedDelete('Can’t delete “'+(l.label||l.name)+'” yet','This closet still has '+ld.r+' rack'+(ld.r===1?'':'s')+' with '+ld.d+' device'+(ld.d===1?'':'s')+'. Delete the racks first (their devices go with them), then the closet.',[ld]);
+  typeToDelete('closet',l.label||l.name,'This removes the empty closet <b>'+esc(l.label||l.name)+'</b>. You can undo it with Ctrl+Z straight away.',function(){
+    S.locations=S.locations.filter(function(x){return x.id!==id});
+    if(ui.loc===id)ui.loc=S.locations.length?S.locations[0].id:null;commit()})}
 
 function renameLocation(l){var hasS=S.sites.length>0,f=[{label:'Name',value:l.name},{label:'Label',value:l.label}];
   if(hasS)f.push({label:'Site',options:siteOpts(),value:l.siteId||''});
