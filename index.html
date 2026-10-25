@@ -334,7 +334,7 @@ function kindRow(k){for(var i=0;i<DEVICE_KINDS.length;i++)if(DEVICE_KINDS[i][0]=
 function kindOpts(){return DEVICE_KINDS.map(function(k){return [k[0],k[1]]})}
 function portsTxt(d){return d.portCount?d.portCount+(d.kind==='pdu'||d.kind==='ups'?' outlets':' ports'):(d.kind==='pdu'||d.kind==='ups'?'no outlets':'no ports')}
 function deviceColor(d){return d.color||DEV_FALLBACK[d.kind]||'#2563eb'}
-var APP_VERSION='3.1.1'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
+var APP_VERSION='3.2.0'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
 
 var Q='"'; // double-quote char used when building the cable rows on the Labels tab
 function siteFold(){var c={};(S.sites||[]).forEach(function(st,i){if(i>0)c[st.id]=true});return c}
@@ -560,7 +560,24 @@ function renameRack(r){modal('Rack',[{label:'Name',value:r.name},{label:'Label',
   if(bad){toast('Too short: '+dn(bad)+' reaches U'+(bad.startU+bad.heightU-1)+'.',1);return false}
   r.name=v[0].trim()||r.name;r.label=v[1].trim();r.height=hgt;commit()})}
 
-function delRack(id,quiet){if(!quiet&&!confirm('Delete this rack, its devices and their cables?'))return;
+
+// ---- deleting a device or rack: you have to type its name, so one stray click can't wipe it out
+function typeToDelete(kind,name,detail,go){
+  modal('Delete '+kind+' “'+name+'”?',[],null,function(){var box=el('mbox'),w=document.createElement('div');w.style.width='min(460px,86vw)';
+    w.innerHTML='<p style="margin:0 0 8px">'+detail+'</p><p class="muted" style="margin:0 0 6px">To confirm, type <b style="color:var(--text);font-family:var(--mono)">'+esc(name)+'</b> below.</p>'+
+      '<input id="tdIn" autocomplete="off" spellcheck="false" style="width:100%;font-size:15px;padding:8px 10px" aria-label="Type the name to confirm">';
+    box.insertBefore(w,el('mok').parentNode);
+    var ok=el('mok');ok.textContent='Delete '+kind;ok.className='dng';ok.disabled=true;ok.style.cssText='background:var(--bad);color:#fff;border-color:var(--bad);opacity:.45';
+    function norm(t){return String(t).trim().replace(/\s+/g,' ').toLowerCase()}
+    var inp=el('tdIn');inp.oninput=function(){var m=norm(inp.value)===norm(name);ok.disabled=!m;ok.style.opacity=m?1:.45};
+    inp.onkeydown=function(e){if(e.key==='Enter'){e.preventDefault();e.stopPropagation();if(!ok.disabled)ok.click()}};
+    ok.onclick=function(){if(ok.disabled)return;el('modal').style.display='none';go()};
+    setTimeout(function(){inp.focus()},0)})}
+function cablesOn(devIds){var ids={};S.ports.forEach(function(p){if(devIds[p.devId])ids[p.id]=1});
+  return {cab:S.cables.filter(function(c){return ids[c.a]||ids[c.b]}).length,hr:S.homeruns.filter(function(h){return ids[h.port]}).length}}
+function delRack(id,quiet){
+  if(!quiet){var r=byId(S.racks,id);if(!r)return;var ds=S.devices.filter(function(d){return d.rackId===id}),m={};ds.forEach(function(d){m[d.id]=1});var c=cablesOn(m);
+    return typeToDelete('rack',r.label||r.name,'This removes the rack, its <b>'+ds.length+' device'+(ds.length===1?'':'s')+'</b>'+(c.cab?', <b>'+c.cab+' cable'+(c.cab===1?'':'s')+'</b>':'')+(c.hr?' and <b>'+c.hr+' homerun'+(c.hr===1?'':'s')+'</b>':'')+'. You can undo it with Ctrl+Z straight away.',function(){delRack(id,true);commit()})}
   S.devices.filter(function(d){return d.rackId===id}).forEach(function(d){delDevice(d.id,true)});
   S.racks=S.racks.filter(function(r){return r.id!==id});
   if(ui.rack===id)ui.rack=null;
@@ -662,7 +679,9 @@ function editDevice(d){modal('Device: '+dn(d),[
     d.fw=v[12].trim();d.vlan=v[13].trim();d.mgmt=v[14].trim();d.warranty=v[15].trim();d.notes=v[16].trim();d.removable=kind==='patch'?v[17]:'';d.numbering=v[18]||'';
     commit()})}
 
-function delDevice(id,quiet){if(!quiet&&!confirm('Delete this device and its cables?'))return;
+function delDevice(id,quiet){
+  if(!quiet){var d=byId(S.devices,id);if(!d)return;var m={};m[id]=1;var c=cablesOn(m);
+    return typeToDelete('device',dn(d),'This removes <b>'+esc(dn(d))+'</b> ('+esc(kN(d.kind).toLowerCase())+', U'+d.startU+')'+(c.cab?' and its <b>'+c.cab+' cable'+(c.cab===1?'':'s')+'</b>':'')+(c.hr?' and <b>'+c.hr+' homerun'+(c.hr===1?'':'s')+'</b>':'')+'. You can undo it with Ctrl+Z straight away.',function(){delDevice(id,true);commit()})}
   var ids=S.ports.filter(function(p){return p.devId===id}).map(function(p){return p.id});
   S.cables=S.cables.filter(function(c){return ids.indexOf(c.a)<0&&ids.indexOf(c.b)<0});
   S.homeruns=S.homeruns.filter(function(h){return ids.indexOf(h.port)<0});
