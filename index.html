@@ -252,6 +252,13 @@ td input:focus{background:var(--accent-soft);outline:1px solid var(--accent)}
 .wol li.done span{color:var(--muted);text-decoration:line-through}
 .wobar{height:8px;border-radius:4px;background:var(--sunk);overflow:hidden;max-width:520px}.wobar i{display:block;height:100%;background:var(--ok)}
 @media print{.wo{color:#000}.wo .muted{color:#444}.wol li{border-color:#ccc}.wol li.done span{color:#666}.wobar{display:none}}
+
+.dlg label{display:block;margin:10px 0 3px;font-size:12.5px;color:var(--muted)}
+.dlg label input:not([type=radio]):not([type=checkbox]){display:block;width:100%;margin-top:4px;font-size:15px;padding:8px 10px}
+.dlg .opt{display:flex;gap:8px;align-items:center;font-size:14px;color:var(--text);margin:6px 0}
+.seg{display:flex;border:1px solid var(--line2);border-radius:6px;overflow:hidden;margin:4px 0 6px}.seg button{flex:1;border:none;border-radius:0;background:var(--raise);color:var(--muted)}.seg button.on{background:var(--sel);color:var(--text);box-shadow:inset 0 -2px 0 var(--accent)}
+.acct{display:flex;align-items:center;gap:6px}.acct .ib{padding:3px 6px;margin-left:-6px;color:var(--text)}
+.chip0{font-size:11px;padding:1px 7px;border-radius:9px;background:var(--accent-soft);color:var(--accent)}
 /* ---- labels (always print-white) ---- */
 .lbl{display:flex;align-items:center;gap:.06in;padding:.04in .08in;border:1px dashed #9ca3af;background:#fff;overflow:hidden;line-height:1.15;color:#000}
 @media print{
@@ -292,6 +299,7 @@ td input:focus{background:var(--accent-soft);outline:1px solid var(--accent)}
 </div>
 <div id="modal"><div class="box" id="mbox"></div></div>
 <div id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
 // ============ Closet Mapper — app script ============
 function boot(){
@@ -322,7 +330,7 @@ function kindRow(k){for(var i=0;i<DEVICE_KINDS.length;i++)if(DEVICE_KINDS[i][0]=
 function kindOpts(){return DEVICE_KINDS.map(function(k){return [k[0],k[1]]})}
 function portsTxt(d){return d.portCount?d.portCount+(d.kind==='pdu'||d.kind==='ups'?' outlets':' ports'):(d.kind==='pdu'||d.kind==='ups'?'no outlets':'no ports')}
 function deviceColor(d){return d.color||DEV_FALLBACK[d.kind]||'#2563eb'}
-var APP_VERSION='2.5.0'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
+var APP_VERSION='3.0.0'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
 
 var Q='"'; // double-quote char used when building the cable rows on the Labels tab
 function siteFold(){var c={};(S.sites||[]).forEach(function(st,i){if(i>0)c[st.id]=true});return c}
@@ -357,9 +365,10 @@ function restoreSnap(j,why){var h=S.history;S=JSON.parse(j);S.history=h;lastSnap
 function undo(){if(!undoS.length){toast('Nothing to undo.');return}redoS.push(snapOf());restoreSnap(undoS.pop(),'Undo');toast('Undone')}
 function redo(){if(!redoS.length){toast('Nothing to redo.');return}undoS.push(snapOf());restoreSnap(redoS.pop(),'Redo');toast('Redone')}
 function save(){
+  if(viewOnly()){var hh=S.history;try{S=JSON.parse(lastSnap)}catch(e){}S.history=hh;toast('You have view-only access to this team’s map.',1);return}
   try{syncCableColors();trackUndo();S.savedAt=new Date().toISOString();localStorage.setItem(KEY,JSON.stringify(S))}
   catch(e){alert('Could not save — browser storage may be full or blocked.')}
-  scheduleFileWrite()}
+  if(cloudOn()&&CS.team){if(lastSnap!==save._last){save._last=lastSnap;cloudChanged()}}else scheduleFileWrite()}
 function stamped(extra){var now=new Date().toISOString(),o=Object.assign({},S,{savedAt:S.savedAt||now},extra?{exportedAt:now}:{});delete o.lock;if(!extra&&fs.h)o.lock=myLock();var pd=photoDataFor();if(pd)o.photoData=pd;return JSON.stringify(o,null,1)}
 function exportText(){return stamped(true)}
 function idbOpen(){return new Promise(function(res,rej){var q=indexedDB.open('closetMapperFS',1);
@@ -422,7 +431,7 @@ function reconnectFile(){
   .catch(function(e){fs.state='err';fs.err=String(e&&e.message?e.message:e);drawBackup()})}
 function unlinkFile(){if(!confirm('Stop auto-saving to "'+fs.name+'"? The file keeps its last saved contents.'))return;
   fs.h=null;fs.name='';fs.state='off';idbPut(null).catch(function(){});drawBackup()}
-function drawBackup(){var b=el('bkp');if(!b)return;
+function drawBackup(){var b=el('bkp');if(!b)return;if(cloudOn())return drawCloud(b);
   var h='',st=fs.state,link=function(t,id){return '<button id="'+id+'" style="margin-top:7px;width:100%">'+t+'</button>'};
   if(!FS_OK)h='<div><span class="led warn"></span>Saved in this browser only</div><p class="muted" style="font-size:12px;margin:4px 0 0">Auto-save to a file needs Chrome or Edge. Use File ▸ Export to keep a copy.</p>';
   else if(!fs.h)h='<div><span class="led warn"></span>No backup file</div>'+link('Auto-save to a file…','fsLink');
@@ -1822,7 +1831,7 @@ function renderMap(){
     '<li><b>Rack view</b> — a zoomed-in drawing of one rack with its ports and cables.</li>'+
     '<li><b>Labels</b> — every location, rack, device, port and cable in one editable table.</li>'+
     '<li><b>Print labels</b> — label sheets for your label maker, plus naming templates.</li></ul></div>'+
-    '<p class="muted">Your data is saved in this browser only. Use Export JSON for backups.</p>';
+    '<p class="muted"></p>';
     return}
   var racks=S.racks.filter(function(r){return r.locId===l.id});
   var h='<div class="row"><h2 style="margin:0">'+(siteOf(l)?'<span class="muted" style="font-size:14px;font-weight:400">'+esc(siteOf(l).name)+' › </span>':'')+esc(l.name)+'</h2><span class="muted">'+esc(l.label||'')+'</span>'+
@@ -2576,9 +2585,188 @@ function openFromHash(){
   if(m[1]==='dev'){ui.rack=o.rackId;ui.loc=rackOfDevice(o).locId;ui.dev=o.id;ui.back='rack';ui.view='device'}
   else {ui.rack=o.id;ui.loc=o.locId;ui.zoom=null;ui.view='rack'}}
 window.addEventListener('hashchange',function(){openFromHash();render()});
-if(FS_OK)idbGet().then(function(h){if(!h){startBox();return}fs.h=h;fs.name=h.name;fs.state='perm';drawBackup();
+// ================= ACCOUNTS & CLOUD SYNC (Supabase) =================
+// Fill these two in from Supabase ▸ Project Settings ▸ API. While they are empty the app runs in the old local/JSON mode.
+var CLOUD=window.CLOSETMAPPER_CLOUD||{url:'https://irjxxhkcnuzzzkyyqnuz.supabase.co',key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlyanh4aGtjbnV6enpreXlxbnV6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI5MDE5NzksImV4cCI6MjEwODQ3Nzk3OX0.V3x0k8I0rSYXEkxBCz5Zaq79jpjNKnjANR1YBiLrFRk'};  // public anon key — safe in the browser, data is protected by row level security
+var SB=null,CS={user:null,team:null,teams:[],role:null,version:0,gen:0,pushedGen:0,saving:false,timer:null,chan:null,status:'off',retry:null,loaded:false};
+function cloudOn(){return !!(CLOUD.url&&CLOUD.key&&window.supabase&&window.supabase.createClient)}
+function viewOnly(){return cloudOn()&&CS.team&&CS.role==='viewer'}
+function cloudBoot(){
+  SB=window.supabase.createClient(CLOUD.url,CLOUD.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+  SB.auth.onAuthStateChange(function(ev,sess){
+    if(ev==='PASSWORD_RECOVERY')newPasswordBox();
+    else if(ev==='SIGNED_IN'&&sess&&!CS.user)afterLogin(sess.user);
+    else if(ev==='SIGNED_OUT'){CS.user=null;authBox()}});
+  SB.auth.getSession().then(function(r){var s=r.data&&r.data.session;if(s)afterLogin(s.user);else authBox()}).catch(function(){authBox()});
+  window.addEventListener('online',function(){if(CS.team&&CS.gen!==CS.pushedGen)cloudPush()});
+  drawBackup()}
+function ovl(id,html,z){var o=el(id);if(!o){o=document.createElement('div');o.id=id;o.className='ovl';o.style.zIndex=z||58;document.body.appendChild(o)}o.innerHTML='<div class="dlg">'+html+'</div>';return o}
+function closeOvl(id){var o=el(id);if(o)o.remove()}
+// ---- sign in / create account / magic link / reset
+function authBox(mode,msg){mode=mode||ui.authMode||'in';ui.authMode=mode;closeOvl('startov');
+  var o=ovl('authov','<div class="brand" style="padding:0 0 10px"><span class="mk" aria-hidden="true"><i></i><i></i><i></i></span><b>Closet Mapper</b></div>'+
+    '<div class="seg"><button data-am="in" class="'+(mode==='in'?'on':'')+'">Sign in</button><button data-am="up" class="'+(mode==='up'?'on':'')+'">Create account</button></div>'+
+    (msg?'<div class="card" style="margin:10px 0;border-left:3px solid var(--ok)">'+msg+'</div>':'')+
+    '<form id="authF"><label>Email<input id="aE" type="email" autocomplete="email" required></label>'+
+    (mode!=='link'?'<label>Password<input id="aP" type="password" autocomplete="'+(mode==='up'?'new-password':'current-password')+'" minlength="8" required></label>':'')+
+    '<div id="aErr" style="color:var(--bad);font-size:13px;min-height:18px;margin-top:6px"></div>'+
+    '<button class="pri" type="submit" style="width:100%;padding:10px">'+(mode==='up'?'Create account':mode==='link'?'Email me a sign-in link':'Sign in')+'</button></form>'+
+    '<div class="row" style="justify-content:space-between;margin-top:10px;font-size:13px">'+(mode==='link'?'<a href="#" id="aPw">Use a password instead</a>':'<a href="#" id="aLink">Email me a sign-in link instead</a>')+(mode==='in'?'<a href="#" id="aForgot">Forgot password?</a>':'')+'</div>'+
+    '<p class="muted" style="font-size:12px;margin:14px 0 0">Your map is stored in your team’s account and loads on any device you sign in on.</p>');
+  o.querySelectorAll('[data-am]').forEach(function(b){b.onclick=function(){authBox(b.getAttribute('data-am'))}});
+  if(el('aLink'))el('aLink').onclick=function(e){e.preventDefault();authBox('link')};
+  if(el('aPw'))el('aPw').onclick=function(e){e.preventDefault();authBox('in')};
+  if(el('aForgot'))el('aForgot').onclick=function(e){e.preventDefault();var em=el('aE').value.trim();if(!em){el('aErr').textContent='Type your email first, then click Forgot password.';return}
+    SB.auth.resetPasswordForEmail(em,{redirectTo:location.origin+location.pathname}).then(function(r){if(r.error)el('aErr').textContent=r.error.message;else authBox('in','We emailed a link to reset your password. Open it on this device.')})};
+  el('authF').onsubmit=function(e){e.preventDefault();var em=el('aE').value.trim(),pw=el('aP')?el('aP').value:'',btn=e.target.querySelector('button[type=submit]');btn.disabled=true;el('aErr').textContent='';
+    var p=mode==='up'?SB.auth.signUp({email:em,password:pw,options:{emailRedirectTo:location.origin+location.pathname}}):mode==='link'?SB.auth.signInWithOtp({email:em,options:{emailRedirectTo:location.origin+location.pathname}}):SB.auth.signInWithPassword({email:em,password:pw});
+    p.then(function(r){btn.disabled=false;if(r.error){el('aErr').textContent=r.error.message;return}
+      if(mode==='link')authBox('link','Check your email for the sign-in link. You can close this tab after clicking it.');
+      else if(mode==='up'&&!r.data.session)authBox('in','Account created. Check your email and click the link to confirm it, then sign in.');
+      else if(r.data.session)afterLogin(r.data.session.user)}).catch(function(err){btn.disabled=false;el('aErr').textContent=String(err.message||err)})};
+  setTimeout(function(){var f=el('aE');if(f)f.focus()},0)}
+function newPasswordBox(){var o=ovl('pwov','<h2 style="margin-top:0">Choose a new password</h2><form id="npF"><label>New password<input id="npP" type="password" minlength="8" required autocomplete="new-password"></label><div id="npE" style="color:var(--bad);font-size:13px;min-height:18px"></div><button class="pri" type="submit" style="width:100%">Save password</button></form>',62);
+  el('npF').onsubmit=function(e){e.preventDefault();SB.auth.updateUser({password:el('npP').value}).then(function(r){if(r.error){el('npE').textContent=r.error.message;return}closeOvl('pwov');toast('Password changed.')})}}
+function signOut(){if(CS.gen!==CS.pushedGen&&!confirm('Some changes have not reached the server yet. Sign out anyway?'))return;
+  cloudStopLive();CS.team=null;CS.teams=[];CS.loaded=false;SB.auth.signOut().then(function(){try{localStorage.removeItem(KEY)}catch(e){}location.reload()})}
+// ---- after sign-in: join invited teams, pick a team, load its map
+function afterLogin(user){CS.user=user;closeOvl('authov');history.replaceState(null,'',location.pathname+location.search.replace(/[?&]code=[^&]*/,''));
+  SB.rpc('accept_invites').then(function(r){if(r.data>0)toast('You joined '+r.data+' team'+(r.data===1?'':'s')+' you were invited to.')}).catch(function(){}).then(loadTeams).then(function(ts){
+    if(!ts.length)return firstTeamBox();var last=null;try{last=localStorage.getItem('cmTeam')}catch(e){}
+    openTeam(ts.filter(function(t){return t.id===last})[0]||ts[0])}).catch(function(e){cloudErr(e)})}
+function loadTeams(){return SB.from('members').select('role,team_id,teams(id,name)').eq('user_id',CS.user.id).then(function(r){if(r.error)throw r.error;
+  CS.teams=(r.data||[]).filter(function(m){return m.teams}).map(function(m){return {id:m.team_id,name:m.teams.name,role:m.role}}).sort(function(a,b){return natCmp(a.name,b.name)});return CS.teams})}
+function firstTeamBox(){var local=S.locations.length||S.devices.length,em=(CS.user.email||'').split('@')[0];
+  var o=ovl('teamov','<h2 style="margin-top:0">Set up your team</h2><p>Your map belongs to a team, so coworkers you invite can work on the same closets. You can rename it later.</p>'+
+    '<label>Team name<input id="tnN" value="'+esc(em?em+'’s team':'My team')+'"></label>'+
+    '<p style="margin:14px 0 6px"><b>Start with</b></p>'+
+    (local?'<label class="opt"><input type="radio" name="tnS" value="local" checked> The map already saved in this browser <span class="muted">('+S.locations.length+' closet'+(S.locations.length===1?'':'s')+', '+S.devices.length+' devices)</span></label>':'')+
+    '<label class="opt"><input type="radio" name="tnS" value="json"'+(local?'':' checked')+'> A JSON backup file (closet-backup.json)</label>'+
+    '<label class="opt"><input type="radio" name="tnS" value="empty"> An empty map</label>'+
+    '<div id="tnE" style="color:var(--bad);font-size:13px;min-height:18px"></div><div class="row"><button class="pri" id="tnOk">Create team</button><button id="tnOut">Sign out</button></div>'+
+    '<p class="muted" style="font-size:12px">Were you invited to an existing team? Ask the owner to invite <b>'+esc(CS.user.email||'')+'</b>, then sign in again.</p>');
+  el('tnOut').onclick=signOut;
+  el('tnOk').onclick=function(){var how=(o.querySelector('input[name=tnS]:checked')||{}).value,name=el('tnN').value.trim()||'My team';
+    function go(data){el('tnOk').disabled=true;SB.rpc('create_team',{team_name:name}).then(function(r){if(r.error)throw r.error;var tid=r.data;
+      return loadTeams().then(function(){var t=CS.teams.filter(function(x){return x.id===tid})[0];CS.team=t;CS.role=t.role;CS.version=1;
+        return uploadAllPhotos(data).then(function(){return SB.rpc('save_map',{t:tid,d:cleanDoc(data),expected:1})}).then(function(r2){if(r2.error)throw r2.error;closeOvl('teamov');openTeam(t)})})}).catch(function(e){el('tnOk').disabled=false;el('tnE').textContent=String(e.message||e)})}
+    if(how==='local')go(JSON.parse(JSON.stringify(Object.assign({},S,{photoData:photoDataFor()}))));
+    else if(how==='empty')go({});
+    else pickFiles('.json,application/json',false).then(function(fs){if(!fs.length)return;fs[0].text().then(function(t){var j=null;try{j=JSON.parse(t)}catch(x){}
+      if(!j||!Array.isArray(j.locations)){el('tnE').textContent='That does not look like a Closet Mapper backup file.';return}go(j)})})}}
+function cleanDoc(j){var o=Object.assign({},j);delete o.photoData;delete o.lock;delete o.exportedAt;return o}
+function uploadAllPhotos(j){var pd=j&&j.photoData;if(!pd)return Promise.resolve();var ids=Object.keys(pd);
+  return ids.reduce(function(pr,id){return pr.then(function(){PHC[id]=pd[id];phPut(id,pd[id]);return photoUpload(id,pd[id],CS.team.id).catch(function(){})})},Promise.resolve())}
+function normDoc(j){j=j||{};['locations','racks','devices','ports','cables','homeruns','sites','power'].forEach(function(k){if(!Array.isArray(j[k]))j[k]=[]});if(!j.settings||typeof j.settings!=='object')j.settings={};delete j.photoData;delete j.lock;delete j.exportedAt;return j}
+function openTeam(t){CS.team=t;CS.role=t.role;try{localStorage.setItem('cmTeam',t.id)}catch(e){}
+  cloudStatus('loading');
+  return SB.from('maps').select('data,version').eq('team_id',t.id).single().then(function(r){if(r.error)throw r.error;applyRemote(r.data.data,r.data.version,false);cloudLive(t.id);
+    if(CS.role==='viewer')toast('You have view-only access to '+t.name+'.')}).catch(function(e){cloudErr(e)})}
+function applyRemote(d,v,keepUi){var prev={loc:ui.loc,rack:ui.rack,dev:ui.dev,view:ui.view};S=normDoc(d);CS.base=JSON.stringify(cleanDoc(S));CS.version=v;CS.gen=0;CS.pushedGen=0;CS.loaded=true;
+  trackUndo.quiet=1;lastSnap=snapOf();save._last=lastSnap;trackUndo.quiet=0;if(!keepUi){undoS=[];redoS=[]}drawUndo();applyPalette();
+  if(keepUi&&prev.loc&&byId(S.locations,prev.loc)){ui.loc=prev.loc;ui.rack=prev.rack&&byId(S.racks,prev.rack)?prev.rack:null;ui.dev=prev.dev&&byId(S.devices,prev.dev)?prev.dev:null;if(ui.view==='device'&&!ui.dev)ui.view='map'}
+  else{ui.loc=S.locations.length?S.locations[0].id:null;ui.rack=null;ui.dev=null;ui.view='map';ui.collapsed=siteFold()}
+  try{localStorage.setItem(KEY,JSON.stringify(S));localStorage.setItem('cmVer:'+CS.team.id,String(v))}catch(e){}
+  cloudStatus('saved');render()}
+// ---- saving: whole document, only if nobody saved in between (version check)
+function cloudChanged(){CS.gen++;clearTimeout(CS.timer);CS.timer=setTimeout(cloudPush,1200);cloudStatus('pending')}
+function cloudPush(){if(!CS.team||!CS.loaded)return;if(CS.saving){clearTimeout(CS.timer);CS.timer=setTimeout(cloudPush,800);return}
+  if(CS.gen===CS.pushedGen){cloudStatus('saved');return}
+  var g=CS.gen,doc=cleanDoc(S);CS.saving=true;cloudStatus('saving');
+  SB.rpc('save_map',{t:CS.team.id,d:doc,expected:CS.version}).then(function(r){CS.saving=false;
+    if(r.error)throw r.error;
+    if(r.data===-1)return cloudMerge();
+    CS.version=r.data;CS.pushedGen=g;CS.base=JSON.stringify(doc);CS.merges=0;try{localStorage.setItem('cmVer:'+CS.team.id,String(r.data))}catch(e){}
+    if(CS.gen!==g)cloudPush();else cloudStatus('saved')}).catch(function(e){CS.saving=false;cloudStatus(navigator.onLine===false?'offline':'error',String(e.message||e));
+      clearTimeout(CS.retry);CS.retry=setTimeout(cloudPush,15000)})}
+// someone saved first: fold their changes into yours and save again (the dialog is only a last resort)
+function cloudMerge(){CS.merges=(CS.merges||0)+1;if(CS.merges>3)return cloudConflict();cloudStatus('saving');
+  SB.from('maps').select('data,version').eq('team_id',CS.team.id).single().then(function(r){if(r.error||!r.data)throw r.error||new Error('no map');
+    var base=null;try{base=JSON.parse(CS.base||'{}')}catch(e){base={}}
+    var merged=normDoc(merge3(base,cleanDoc(S),normDoc(r.data.data)));var h=S.history;S=merged;if(!S.history)S.history=h;
+    CS.base=JSON.stringify(cleanDoc(normDoc(r.data.data)));CS.version=r.data.version;
+    trackUndo.quiet=1;lastSnap=snapOf();save._last=lastSnap;trackUndo.quiet=0;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
+    render();toast('Merged your changes with a teammate’s.');cloudPush()}).catch(function(e){cloudErr(e)})}
+function cloudConflict(){cloudStatus('conflict');
+  SB.from('map_heads').select('updated_by_email,updated_at,version').eq('team_id',CS.team.id).single().then(function(r){var h=r.data||{};
+    var o=ovl('confov','<h2 style="margin-top:0">Someone else saved this map</h2><p><b>'+esc(h.updated_by_email||'A teammate')+'</b> saved changes '+(h.updated_at?esc(fmtTime(h.updated_at)):'just now')+' while you were editing.</p>'+
+      '<div class="row" style="flex-direction:column;align-items:stretch"><button class="pri" id="cfTheirs">Load their version <span style="font-weight:400">(your unsaved changes are dropped)</span></button><button id="cfMine">Keep my version <span class="muted">(replaces their changes)</span></button><button id="cfBoth">Download my version as JSON first</button></div>',63);
+    el('cfTheirs').onclick=function(){closeOvl('confov');openTeam(CS.team)};
+    el('cfMine').onclick=function(){closeOvl('confov');CS.version=h.version||CS.version;cloudPush()};
+    el('cfBoth').onclick=function(){dl('closet-mine-'+stampName()+'.json',exportText(),'application/json')}})}
+
+// ---- three-way merge: your edits and a teammate's edits since the last sync both survive;
+// only when you both changed the same field of the same thing does yours win
+function eqJ(a,b){return JSON.stringify(a)===JSON.stringify(b)}
+function merge3(base,mine,theirs){base=base||{};var out={},keys={};[base,mine,theirs].forEach(function(o){Object.keys(o||{}).forEach(function(k){keys[k]=1})});
+  Object.keys(keys).forEach(function(k){var b=base[k],m=mine[k],t=theirs[k];
+    if(k==='history'){var all=(t||[]).concat(m||[]),seen={},h=[];all.forEach(function(e){var key=e.at+'|'+(e.items||[]).join();if(!seen[key]){seen[key]=1;h.push(e)}});h.sort(function(x,y){return x.at<y.at?1:-1});out[k]=h.slice(0,HIST_MAX);return}
+    if(Array.isArray(m)&&Array.isArray(t)&&(m.concat(t).every(function(x){return x&&typeof x==='object'&&x.id!=null}))){out[k]=mergeById(b||[],m,t);return}
+    if(m&&t&&typeof m==='object'&&typeof t==='object'&&!Array.isArray(m)&&!Array.isArray(t)&&k!=='settings'){out[k]=merge3(b&&typeof b==='object'?b:{},m,t);return}
+    out[k]=eqJ(m,b)?t:m});
+  Object.keys(out).forEach(function(k){if(out[k]===undefined)delete out[k]});return out}
+function mergeById(b,m,t){var B={},M={},T={},res=[],done={};b.forEach(function(x){B[x.id]=x});m.forEach(function(x){M[x.id]=x});t.forEach(function(x){T[x.id]=x});
+  function one(id){var bb=B[id],mm=M[id],tt=T[id];
+    if(mm&&tt){if(!bb)return eqJ(mm,tt)?tt:mm;var o={},ks={};[bb,mm,tt].forEach(function(x){Object.keys(x).forEach(function(k){ks[k]=1})});
+      Object.keys(ks).forEach(function(k){var v=eqJ(mm[k],bb[k])?tt[k]:mm[k];if(v!==undefined)o[k]=v});return o}
+    if(mm&&!tt)return bb?(eqJ(mm,bb)?null:mm):mm;   // they deleted it: gone, unless you changed it
+    if(tt&&!mm)return bb?(eqJ(tt,bb)?null:tt):tt;   // you deleted it: gone, unless they changed it
+    return null}
+  t.concat(m).forEach(function(x){if(done[x.id])return;done[x.id]=1;var r=one(x.id);if(r)res.push(r)});return res}
+// ---- live updates from teammates
+function cloudLive(tid){cloudStopLive();
+  CS.chan=SB.channel('head-'+tid).on('postgres_changes',{event:'*',schema:'public',table:'map_heads',filter:'team_id=eq.'+tid},function(p){var n=p.new||{};
+    if(!n.version||n.version<=CS.version||n.updated_by===CS.user.id)return;
+    if(CS.gen===CS.pushedGen&&!CS.saving){SB.from('maps').select('data,version').eq('team_id',tid).single().then(function(r){if(r.error||!r.data)return;applyRemote(r.data.data,r.data.version,true);toast('Updated by '+(n.updated_by_email||'a teammate'))})}
+    else cloudStatus('behind')}).subscribe()}
+function cloudStopLive(){if(CS.chan){try{SB.removeChannel(CS.chan)}catch(e){}CS.chan=null}}
+function cloudErr(e){cloudStatus('error',String(e&&e.message||e));toast('Could not reach your account: '+String(e&&e.message||e),1)}
+function cloudStatus(s,detail){CS.status=s;CS.detail=detail||'';drawBackup()}
+function drawCloud(b){var st=CS.status,t=CS.team,led={saved:'on',pending:'warn',saving:'warn',loading:'warn',behind:'warn',offline:'bad',error:'bad',conflict:'bad'}[st]||'',
+    txt={saved:'Saved',pending:'Unsaved changes…',saving:'Saving…',loading:'Loading…',behind:'A teammate saved — yours saves next',offline:'Offline — changes are kept here and sync when you are back',error:'Not saved — retrying',conflict:'Needs your choice',off:''}[st]||'';
+  if(!CS.user){b.innerHTML='<div><span class="led warn"></span>Not signed in</div>';return}
+  b.innerHTML=(t?'<div class="acct"><button class="ib" id="cTeam" title="Team, members and invites"><b>'+esc(t.name)+'</b> ▾</button>'+(CS.role==='viewer'?'<span class="chip0">view only</span>':'')+'</div>':'')+
+    '<div style="margin-top:4px" title="'+esc(CS.detail||'')+'"><span class="led '+led+'"></span>'+txt+'</div>'+
+    '<div class="muted" style="font-size:12px;margin-top:4px;display:flex;gap:6px;align-items:center"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(CS.user.email||'')+'</span><a href="#" id="cOut" style="color:var(--muted);margin-left:auto">Sign out</a></div>';
+  if(el('cTeam'))el('cTeam').onclick=teamBox;el('cOut').onclick=function(e){e.preventDefault();signOut()}}
+// ---- team settings: members, invites, roles, switch, new team
+function teamBox(){var t=CS.team;if(!t)return;var owner=CS.role==='owner';
+  Promise.all([SB.from('members').select('user_id,email,role').eq('team_id',t.id),owner?SB.from('invites').select('id,email,role,created_at').eq('team_id',t.id):Promise.resolve({data:[]}),loadTeams()]).then(function(rs){
+    var mem=(rs[0].data||[]).sort(function(a,b){return natCmp(a.email||'',b.email||'')}),inv=rs[1].data||[];
+    modal('Team — '+t.name,[],null,function(){var box=el('mbox'),w=document.createElement('div');w.style.width='min(640px,88vw)';box.insertBefore(w,el('mok').parentNode);el('mok').style.display='none';el('mno').textContent='Close';
+      var roleSel=function(m){return '<select data-role="'+m.user_id+'"'+(owner&&m.user_id!==CS.user.id?'':' disabled')+'>'+['owner','editor','viewer'].map(function(r){return '<option'+(r===m.role?' selected':'')+'>'+r+'</option>'}).join('')+'</select>'};
+      w.innerHTML=(owner?'<div class="row"><input id="tmName" value="'+esc(t.name)+'" style="flex:1"><button id="tmRen">Rename</button></div>':'<p class="muted">Your role: <b>'+esc(CS.role)+'</b></p>')+
+        '<h3>Members</h3><table><tr><th>Email</th><th>Role</th><th></th></tr>'+mem.map(function(m){return '<tr><td>'+esc(m.email||'(unknown)')+(m.user_id===CS.user.id?' <span class="muted">(you)</span>':'')+'</td><td>'+roleSel(m)+'</td><td>'+(owner&&m.user_id!==CS.user.id?'<button class="ib dng" data-rm="'+m.user_id+'">Remove</button>':'')+'</td></tr>'}).join('')+'</table>'+
+        (owner?'<h3>Invite someone</h3><div class="row"><input id="tmEm" type="email" placeholder="coworker@school.org" style="flex:1"><select id="tmRole"><option value="editor">Editor — can change the map</option><option value="viewer">Viewer — can only look</option></select><button class="pri" id="tmInv">Invite</button></div>'+
+          '<p class="muted" style="font-size:12px">They sign up at <b>'+esc(location.host||'closetmapper.cloud')+'</b> with that email and join automatically.</p>'+
+          (inv.length?'<table><tr><th>Waiting to sign up</th><th>Role</th><th></th></tr>'+inv.map(function(i){return '<tr><td>'+esc(i.email)+'</td><td>'+esc(i.role)+'</td><td><button class="ib" data-uninv="'+i.id+'">Cancel</button></td></tr>'}).join('')+'</table>':''):'')+
+        '<h3>Your teams</h3><div class="row">'+CS.teams.map(function(x){return '<button class="chip'+(x.id===t.id?' on':'')+'" data-sw="'+x.id+'">'+esc(x.name)+' <span class="muted">'+esc(x.role)+'</span></button>'}).join('')+'<button id="tmNew">+ New team</button></div>'+
+        '<div class="row" style="margin-top:14px"><button class="dng" id="tmLeave">Leave this team</button></div>';
+      function reopen(){el('modal').style.display='none';teamBox()}
+      if(el('tmRen'))el('tmRen').onclick=function(){var n=el('tmName').value.trim();if(!n)return;SB.from('teams').update({name:n}).eq('id',t.id).then(function(r){if(r.error)return toast(r.error.message,1);t.name=n;drawBackup();reopen()})};
+      w.querySelectorAll('[data-role]').forEach(function(s){s.onchange=function(){SB.from('members').update({role:s.value}).eq('team_id',t.id).eq('user_id',s.getAttribute('data-role')).then(function(r){if(r.error)toast(r.error.message,1);else toast('Role changed.')})}});
+      w.querySelectorAll('[data-rm]').forEach(function(b){b.onclick=function(){if(!confirm('Remove this person from the team?'))return;SB.from('members').delete().eq('team_id',t.id).eq('user_id',b.getAttribute('data-rm')).then(function(r){if(r.error)toast(r.error.message,1);reopen()})}});
+      if(el('tmInv'))el('tmInv').onclick=function(){var em=el('tmEm').value.trim().toLowerCase();if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em))return toast('Type a full email address.',1);
+        SB.from('invites').insert({team_id:t.id,email:em,role:el('tmRole').value}).then(function(r){if(r.error)return toast(r.error.message,1);toast('Invited '+em+'.');reopen()})};
+      w.querySelectorAll('[data-uninv]').forEach(function(b){b.onclick=function(){SB.from('invites').delete().eq('id',b.getAttribute('data-uninv')).then(reopen)}});
+      w.querySelectorAll('[data-sw]').forEach(function(b){b.onclick=function(){var x=CS.teams.filter(function(y){return y.id===b.getAttribute('data-sw')})[0];if(!x||x.id===t.id)return;
+        if(CS.gen!==CS.pushedGen&&!confirm('Some changes are still saving. Switch anyway?'))return;el('modal').style.display='none';openTeam(x)}});
+      el('tmNew').onclick=function(){var n=prompt('Name the new team');if(!n||!n.trim())return;SB.rpc('create_team',{team_name:n.trim()}).then(function(r){if(r.error)return toast(r.error.message,1);
+        loadTeams().then(function(){var x=CS.teams.filter(function(y){return y.id===r.data})[0];el('modal').style.display='none';openTeam(x)})})};
+      el('tmLeave').onclick=function(){if(!confirm('Leave '+t.name+'? You will lose access to its map.'))return;SB.rpc('leave_team',{t:t.id}).then(function(r){if(r.error)return toast(r.error.message,1);location.reload()})}})})}
+// ---- photos in cloud storage (cached on the device in IndexedDB)
+function dataUrlBlob(d){var p=d.split(','),b=atob(p[1]),a=new Uint8Array(b.length);for(var i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return new Blob([a],{type:(p[0].match(/:(.*?);/)||[])[1]||'image/jpeg'})}
+function photoUpload(id,data,tid){return SB.storage.from('photos').upload((tid||CS.team.id)+'/'+id+'.jpg',dataUrlBlob(data),{upsert:true,contentType:'image/jpeg'}).then(function(r){if(r.error)throw r.error})}
+function photoRemove(id){if(cloudOn()&&CS.team)SB.storage.from('photos').remove([CS.team.id+'/'+id+'.jpg']).catch(function(){})}
+var phWant={};
+function ensurePhoto(id,cb){if(!id||PHC[id]||!cloudOn()||!CS.team||phWant[id])return;phWant[id]=1;
+  SB.storage.from('photos').download(CS.team.id+'/'+id+'.jpg').then(function(r){if(r.error||!r.data)return;var fr=new FileReader();fr.onload=function(){phPut(id,fr.result);delete phWant[id];if(cb)cb()};fr.readAsDataURL(r.data)}).catch(function(){})}
+
+if(cloudOn())cloudBoot();
+else if(FS_OK)idbGet().then(function(h){if(!h){startBox();return}fs.h=h;fs.name=h.name;fs.state='perm';drawBackup();
   return h.queryPermission({mode:'readwrite'}).then(function(pm){if(pm==='granted'){fs.state='on';fs.at=S.savedAt||null;drawBackup();return syncWithFile(false)}startBox()})}).catch(function(){startBox()});
 else startBox();
+if(!cloudOn()&&CLOUD.url)setTimeout(function(){toast('Could not load the sign-in service — working on this device only. Check your internet connection and reload.',1)},800);
 // ---- start-up box: shown when no backup file is connected, so you always work from your JSON
 function startBox(){
   if(el('lockov')||el('startov'))return;
@@ -2710,7 +2898,7 @@ function drawCrumbs(v){var c=el('crumbs');if(!c)return;
 function popMenu(anchor,items){closeCtx();var m=document.createElement('div');m.className='menu';
   items.forEach(function(it){var b=document.createElement('div');b.className='mi';b.textContent=it[0];b.onclick=function(){closeCtx();it[1]()};m.appendChild(b)});
   document.body.appendChild(m);ctxEl=m;var rc=anchor.getBoundingClientRect();m.style.top=(rc.bottom+4)+'px';m.style.left=Math.max(8,Math.min(rc.left,innerWidth-m.offsetWidth-8))+'px'}
-el('bFile').onclick=function(e){e.stopPropagation();popMenu(el('bFile'),[['Change history…',showHistory],['Export a JSON backup',function(){el('bExp').click()}],['Import a JSON backup…',function(){el('file').click()}],
+el('bFile').onclick=function(e){e.stopPropagation();if(cloudOn()&&CS.user)return popMenu(el('bFile'),[['Change history…',showHistory],['Team & members…',teamBox],['Export a JSON backup',function(){var ids=(S.photos||[]).map(function(p){return p.id}).concat((S.floorplans||[]).map(function(f){return f.img}));ids.forEach(function(i){ensurePhoto(i)});setTimeout(function(){el('bExp').click()},ids.some(function(i){return !PHC[i]})?2500:0)}],['Replace this team’s map with a JSON file…',function(){if(viewOnly())return toast('You have view-only access.',1);el('file').click()}],['Sign out',signOut]]);popMenu(el('bFile'),[['Change history…',showHistory],['Export a JSON backup',function(){el('bExp').click()}],['Import a JSON backup…',function(){el('file').click()}],
   [fs.h?'Backup file: '+fs.name:'Auto-save to a file…',function(){if(!fs.h&&FS_OK)linkFile();else if(!FS_OK)toast('Auto-save to a file needs Chrome or Edge.',1)}]])};
 function themeIcon(){var b=el('bTheme');if(b)b.textContent=document.documentElement.getAttribute('data-theme')==='light'?'☾ Dark':'☀ Light'}
 function setTheme(t){if(t==='light')document.documentElement.setAttribute('data-theme','light');else document.documentElement.removeAttribute('data-theme');try{localStorage.setItem('closetMapperTheme',t)}catch(e){}}
@@ -2916,7 +3104,7 @@ function histDiff(prevJ){var A;try{A=JSON.parse(prevJ)}catch(e){return []}
     if(del.length)out.push(del.length===1?'Removed '+t[1]+' '+del[0]:'Removed '+del.length+' '+t[1]+'s (e.g. '+del[0]+')')});
   return out}
 function logHistory(prevJ,why){if(!Array.isArray(S.history))S.history=[];var items=why?[why]:histDiff(prevJ);if(!items.length)return;
-  var dev=(navigator.userAgentData&&navigator.userAgentData.platform)||navigator.platform||'';
+  var dev=(cloudOn()&&CS.user&&CS.user.email)||(navigator.userAgentData&&navigator.userAgentData.platform)||navigator.platform||'';
   S.history.unshift({at:new Date().toISOString(),items:items.slice(0,8),more:Math.max(0,items.length-8),dev:dev});if(S.history.length>HIST_MAX)S.history.length=HIST_MAX}
 function showHistory(){var hs=S.history||[];
   modal('Change history',[],null,function(){var box=el('mbox'),w=document.createElement('div');w.style.minWidth='min(640px,86vw)';
@@ -2934,7 +3122,7 @@ function phOpen(){return new Promise(function(res,rej){var q=indexedDB.open('clo
 function phPut(id,data){PHC[id]=data;return phOpen().then(function(db){return new Promise(function(res){var t=db.transaction('p','readwrite');if(data)t.objectStore('p').put(data,id);else t.objectStore('p').delete(id);t.oncomplete=function(){db.close();res()};t.onerror=function(){db.close();res()}})}).catch(function(){})}
 function phLoadAll(){return phOpen().then(function(db){return new Promise(function(res){var t=db.transaction('p'),st=t.objectStore('p'),rq=st.openCursor();
   rq.onsuccess=function(){var c=rq.result;if(c){PHC[c.key]=c.value;c.continue()}else{db.close();res()}};rq.onerror=function(){db.close();res()}})}).catch(function(){})}
-function absorbPhotos(j){if(j&&j.photoData&&typeof j.photoData==='object'){Object.keys(j.photoData).forEach(function(id){phPut(id,j.photoData[id])})}if(j)delete j.photoData}
+function absorbPhotos(j){if(j&&j.photoData&&typeof j.photoData==='object'){Object.keys(j.photoData).forEach(function(id){phPut(id,j.photoData[id]);if(cloudOn()&&CS.team)photoUpload(id,j.photoData[id]).catch(function(){})})}if(j)delete j.photoData}
 function photoDataFor(){var o={},n=0;(S.photos||[]).forEach(function(p){if(PHC[p.id]){o[p.id]=PHC[p.id];n++}});(S.floorplans||[]).forEach(function(f){if(f.img&&PHC[f.img]){o[f.img]=PHC[f.img];n++}});return n?o:null}
 // shrink a picked image to at most 1800px, JPEG — keeps the backup file reasonable
 function readImage(file,max){max=max||1800;return new Promise(function(res,rej){var fr=new FileReader();fr.onerror=function(){rej(fr.error)};
@@ -2950,14 +3138,14 @@ function showPhotos(kind,id){var obj=kind==='rack'?byId(S.racks,id):byId(S.locat
   modal('Photos — '+name,[],null,function(){var box=el('mbox'),w=document.createElement('div');w.style.width='min(860px,88vw)';box.insertBefore(w,el('mok').parentNode);el('mok').style.display='none';el('mno').textContent='Close';var oc0=el('mno').onclick;el('mno').onclick=function(){oc0();render()};
     function draw(){var ps=photosFor(kind,id);
       w.innerHTML='<div class="row"><button class="pri" id="phAdd">Add photos…</button><span class="muted" style="font-size:12px">Take them with your phone or pick files. They are shrunk to save space and saved with your backup.</span></div>'+
-        (ps.length?'<div class="phgrid">'+ps.map(function(p){return '<figure data-ph="'+p.id+'">'+(PHC[p.id]?'<img src="'+PHC[p.id]+'" alt="'+esc(p.caption||name)+'">':'<div class="phmiss">Photo not on this device yet — reopen the backup file</div>')+
+        (ps.length?'<div class="phgrid">'+ps.map(function(p){if(!PHC[p.id])ensurePhoto(p.id,draw);return '<figure data-ph="'+p.id+'">'+(PHC[p.id]?'<img src="'+PHC[p.id]+'" alt="'+esc(p.caption||name)+'">':'<div class="phmiss">Photo not on this device yet — reopen the backup file</div>')+
           '<figcaption><input data-cap="'+p.id+'" value="'+esc(p.caption||'')+'" placeholder="Caption (e.g. front, after re-patch)"><small class="muted">'+esc(fmtTime(p.at))+'</small><button class="ib dng" data-phdel="'+p.id+'" title="Delete photo">✕</button></figcaption></figure>'}).join('')+'</div>'
         :'<p class="muted" style="margin:14px 0">No photos yet. A photo of the front and back of each rack makes it easy to check the map against what is really there.</p>');
       el('phAdd').onclick=function(){pickFiles('image/*',true).then(function(fs){if(!fs.length)return;var left=fs.length;
-        fs.forEach(function(f){readImage(f).then(function(im){var pid=uid();phPut(pid,im.data);S.photos.push({id:pid,kind:kind,ref:id,caption:f.name.replace(/\.[^.]+$/,''),at:new Date().toISOString(),w:im.w,h:im.h});
+        fs.forEach(function(f){readImage(f).then(function(im){var pid=uid();phPut(pid,im.data);if(cloudOn()&&CS.team)photoUpload(pid,im.data).catch(function(e){toast('Photo kept on this device; upload failed: '+e.message,1)});S.photos.push({id:pid,kind:kind,ref:id,caption:f.name.replace(/\.[^.]+$/,''),at:new Date().toISOString(),w:im.w,h:im.h});
           if(--left===0){save();draw();toast(fs.length+' photo'+(fs.length===1?'':'s')+' added.')}}).catch(function(e){toast(e.message,1);if(--left===0){save();draw()}})})})};
       w.querySelectorAll('[data-cap]').forEach(function(i){i.onchange=function(){var p=byId(S.photos,i.getAttribute('data-cap'));p.caption=i.value.trim();save()}});
-      w.querySelectorAll('[data-phdel]').forEach(function(b){b.onclick=function(){if(!confirm('Delete this photo?'))return;var pid=b.getAttribute('data-phdel');S.photos=S.photos.filter(function(p){return p.id!==pid});phPut(pid,null);save();draw()}});
+      w.querySelectorAll('[data-phdel]').forEach(function(b){b.onclick=function(){if(!confirm('Delete this photo?'))return;var pid=b.getAttribute('data-phdel');S.photos=S.photos.filter(function(p){return p.id!==pid});phPut(pid,null);photoRemove(pid);save();draw()}});
       w.querySelectorAll('figure img').forEach(function(im){im.onclick=function(){var o=document.createElement('div');o.className='ovl';o.style.zIndex='70';o.style.cursor='zoom-out';o.innerHTML='<img src="'+im.src+'" style="max-width:96vw;max-height:94vh;border-radius:6px">';o.onclick=function(){o.remove()};document.body.appendChild(o)}})}
     draw()})}
 // ================= FLOOR PLANS: pin rooms on a picture of each floor =================
@@ -2974,6 +3162,7 @@ function renderFloor(){var m=el('main');if(!Array.isArray(S.floorplans))S.floorp
     '<button id="fpAdd">+ Floor plan…</button>'+(fp?'<span style="flex:1"></span><button id="fpRen">Rename</button><button id="fpImg">Replace picture…</button><button class="dng" id="fpDel">Delete</button>':'')+'</div>';
   if(!bs.length){m.innerHTML=h+'<div class="card muted">Add a closet first — floor plans belong to a building (a site).</div>';bindFp();return}
   if(!fp){m.innerHTML=h+'<div class="card muted">No floor plan for this building yet. Add a picture of a floor (a scan, a PDF screenshot or a phone photo of the fire-exit map), then pin each room on it.</div>';bindFp();return}
+  if(!PHC[fp.img])ensurePhoto(fp.img,renderFloor);
   var placed={};fp.pins.forEach(function(p){placed[p.key]=p});
   var placing=ui.fpPlace||null;
   h+='<div class="fpwrap"><div class="fpcanvas'+(placing?' placing':'')+'" id="fpC">'+(PHC[fp.img]?'<img id="fpI" src="'+PHC[fp.img]+'" draggable="false" alt="'+esc(fp.name)+'">':'<div class="phmiss" style="height:300px">Picture not on this device yet — reopen your backup file.</div>')+
@@ -3010,11 +3199,11 @@ function bindFp(){
   document.querySelectorAll('[data-fp]').forEach(function(b){b.onclick=function(){ui.fp=b.getAttribute('data-fp');ui.fpPlace=null;ui.fpSel=null;renderFloor()}});
   if(el('fpAdd'))el('fpAdd').onclick=function(){pickFiles('image/*',false).then(function(fs){if(!fs.length)return;readImage(fs[0],2600).then(function(im){
     var nm=prompt('Name this floor plan',(S.floorplans.filter(function(f){return f.bld===ui.fpB}).length?'Floor '+(S.floorplans.filter(function(f){return f.bld===ui.fpB}).length+1):'Floor 1'));if(nm===null)return;
-    var pid=uid();phPut(pid,im.data);var f={id:uid(),bld:ui.fpB,name:nm.trim()||'Floor plan',img:pid,w:im.w,h:im.h,pins:[]};S.floorplans.push(f);ui.fp=f.id;commit()}).catch(function(e){toast(e.message,1)})})};
+    var pid=uid();phPut(pid,im.data);if(cloudOn()&&CS.team)photoUpload(pid,im.data).catch(function(){});var f={id:uid(),bld:ui.fpB,name:nm.trim()||'Floor plan',img:pid,w:im.w,h:im.h,pins:[]};S.floorplans.push(f);ui.fp=f.id;commit()}).catch(function(e){toast(e.message,1)})})};
   var fp=byId(S.floorplans||[],ui.fp);if(!fp)return;
   if(el('fpRen'))el('fpRen').onclick=function(){var nm=prompt('Rename floor plan',fp.name);if(nm&&nm.trim()){fp.name=nm.trim();commit()}};
-  if(el('fpImg'))el('fpImg').onclick=function(){pickFiles('image/*',false).then(function(fs){if(!fs.length)return;readImage(fs[0],2600).then(function(im){phPut(fp.img,null);var pid=uid();phPut(pid,im.data);fp.img=pid;fp.w=im.w;fp.h=im.h;commit();toast('Picture replaced — pins keep their places.')})})};
-  if(el('fpDel'))el('fpDel').onclick=function(){if(!confirm('Delete the floor plan "'+fp.name+'" and its pins?'))return;phPut(fp.img,null);S.floorplans=S.floorplans.filter(function(x){return x!==fp});ui.fp=null;commit()}}
+  if(el('fpImg'))el('fpImg').onclick=function(){pickFiles('image/*',false).then(function(fs){if(!fs.length)return;readImage(fs[0],2600).then(function(im){phPut(fp.img,null);photoRemove(fp.img);var pid=uid();phPut(pid,im.data);if(cloudOn()&&CS.team)photoUpload(pid,im.data).catch(function(){});fp.img=pid;fp.w=im.w;fp.h=im.h;commit();toast('Picture replaced — pins keep their places.')})})};
+  if(el('fpDel'))el('fpDel').onclick=function(){if(!confirm('Delete the floor plan "'+fp.name+'" and its pins?'))return;phPut(fp.img,null);photoRemove(fp.img);S.floorplans=S.floorplans.filter(function(x){return x!==fp});ui.fp=null;commit()}}
 // ================= WORK ORDERS: the optimised plan as a checklist you can print, tick off, then apply =================
 function woItems(r,oc){var it=[],dnI=function(id){var d=oc.byDev[id];return d?dn(d):'?'};
   function add(sec,t){it.push({sec:sec,text:t,done:false})}
