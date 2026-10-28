@@ -264,6 +264,20 @@ td input:focus{background:var(--accent-soft);outline:1px solid var(--accent)}
 .msbtn:hover{background:#f3f3f3;border-color:#5e5e5e}
 .orline{display:flex;align-items:center;gap:10px;color:var(--faint);font-size:12px;margin:12px 0 2px}.orline::before,.orline::after{content:"";flex:1;height:1px;background:var(--line2)}
 .blk{list-style:none;margin:0;padding:0}.blk li{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-top:1px solid var(--line)}
+
+.pzwrap{display:flex;gap:12px;align-items:flex-start}
+.pzside{width:250px;flex:none;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px;position:sticky;top:110px;max-height:calc(100vh - 130px);display:flex;flex-direction:column}
+.pzside input{width:100%;margin-bottom:6px}.pzlist{overflow:auto;flex:1}
+.pzroom{font-size:12px;font-weight:600;color:var(--muted);padding:8px 4px 3px}
+.pzdrop{display:flex;align-items:center;gap:7px;padding:5px 6px;border:1px solid var(--line);border-radius:4px;margin:3px 0;background:var(--raise);cursor:grab;user-select:none;touch-action:none;font-size:13px}
+.pzdrop i{width:10px;height:10px;border-radius:2px;flex:none}.pzdrop span{font-family:var(--mono)}.pzdrop small{margin-left:auto;color:var(--faint);font-family:var(--mono);font-size:11px;white-space:nowrap}
+.pzdrop:hover{border-color:var(--accent)}.pzdrop.placed{opacity:.55}.pzdrop.placed small{color:var(--ok)}
+.pzmain{flex:1;min-width:0}.pzrackwrap{overflow:auto;max-height:calc(100vh - 210px);border:1px solid var(--line);border-radius:6px;background:var(--sunk)}
+#pzsvg{display:block;user-select:none;touch-action:none}
+#pzsvg .pzport{cursor:pointer}#pzsvg .pzport.hot rect{stroke:#f0a33a;stroke-width:3}
+.pzhw{width:200px;flex:none;position:sticky;top:110px}.pzhw .tpl{cursor:grab;touch-action:none}
+.pzghost{position:fixed;z-index:80;pointer-events:none;background:var(--accent);color:var(--accent-ink);font:600 12px var(--sans);padding:3px 8px;border-radius:10px;box-shadow:0 4px 12px rgba(0,0,0,.4)}
+@media (max-width:1100px){.pzwrap{flex-direction:column}.pzside,.pzhw{width:100%;position:static;max-height:none}}
 /* ---- labels (always print-white) ---- */
 .lbl{display:flex;align-items:center;gap:.06in;padding:.04in .08in;border:1px dashed #9ca3af;background:#fff;overflow:hidden;line-height:1.15;color:#000}
 @media print{
@@ -297,7 +311,7 @@ td input:focus{background:var(--accent-soft);outline:1px solid var(--accent)}
   <button id="bExp" style="display:none">Export JSON</button><button id="bImp" style="display:none">Import JSON</button>
   <input type="file" id="file" accept=".json" style="display:none">
  </div>
- <div id="tabs" role="tablist"><button id="bMap">Map</button><button id="bRack">Rack view</button><button id="bLab">Labels</button><button id="bSug">Suggestions</button><button id="bPrt">Print labels</button><span class="tabsep"></span><button id="bRoom" title="Find everything that serves a room, across every closet">Rooms</button><button id="bFloor" title="Pin rooms on floor plans">Floor plans</button><button id="bCap" title="Free ports, jacks, strands and rack space in every closet">Capacity</button></div>
+ <div id="tabs" role="tablist"><button id="bMap">Map</button><button id="bRack">Rack view</button><button id="bLab">Labels</button><button id="bSug">Suggestions</button><button id="bPrt">Print labels</button><button id="bOpt" title="Plan a closet from scratch without changing Rack view">Optimizer</button><span class="tabsep"></span><button id="bRoom" title="Find everything that serves a room, across every closet">Rooms</button><button id="bFloor" title="Pin rooms on floor plans">Floor plans</button><button id="bCap" title="Free ports, jacks, strands and rack space in every closet">Capacity</button></div>
 </div>
 <main id="main"></main>
 </div>
@@ -335,7 +349,7 @@ function kindRow(k){for(var i=0;i<DEVICE_KINDS.length;i++)if(DEVICE_KINDS[i][0]=
 function kindOpts(){return DEVICE_KINDS.map(function(k){return [k[0],k[1]]})}
 function portsTxt(d){return d.portCount?d.portCount+(d.kind==='pdu'||d.kind==='ups'?' outlets':' ports'):(d.kind==='pdu'||d.kind==='ups'?'no outlets':'no ports')}
 function deviceColor(d){return d.color||DEV_FALLBACK[d.kind]||'#2563eb'}
-var APP_VERSION='3.2.1'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
+var APP_VERSION='3.3.0'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
 
 var Q='"'; // double-quote char used when building the cable rows on the Labels tab
 function siteFold(){var c={};(S.sites||[]).forEach(function(st,i){if(i>0)c[st.id]=true});return c}
@@ -2556,7 +2570,7 @@ function renderSuggest(){
 function render(){
   try{
     applyPalette();markTrunks();
-    var v=ui.view;
+    var v=ui.view;if(el('main'))el('main').onpointerdown=null;
     if(v==='rack'&&!S.racks.length)v='map';
     if(v==='device'&&!byId(S.devices,ui.dev))v='map';
     var snap=grabScroll(),prevKey=lastViewKey;
@@ -2565,7 +2579,7 @@ function render(){
     btn=el('bLab');if(btn)btn.className=v==='labels'?'on':'';
     btn=el('bPrt');if(btn)btn.className=v==='print'?'on':'';
     btn=el('bSug');if(btn)btn.className=v==='sug'?'on':'';
-    btn=el('bRoom');if(btn)btn.className=v==='rooms'?'on':'';btn=el('bCap');if(btn)btn.className=v==='cap'?'on':'';btn=el('bFloor');if(btn)btn.className=v==='floor'?'on':'';
+    btn=el('bRoom');if(btn)btn.className=v==='rooms'?'on':'';btn=el('bCap');if(btn)btn.className=v==='cap'?'on':'';btn=el('bOpt');if(btn)btn.className=v==='opt'?'on':'';btn=el('bFloor');if(btn)btn.className=v==='floor'?'on':'';
     if(v==='rack')renderRack();
     else if(v==='device')renderDevice();
     else if(v==='labels')renderLabels();
@@ -2573,6 +2587,7 @@ function render(){
     else if(v==='sug')renderSuggest();
     else if(v==='rooms')renderRooms();
     else if(v==='cap')renderCapacity();
+    else if(v==='opt')renderOptimizer();
     else if(v==='floor')renderFloor();
     else renderMap();
     renderSide();drawCrumbs(v);
@@ -2592,6 +2607,7 @@ el('bSug').onclick=function(){ui.view='sug';ui.plan='';ui.wo=null;render()};
 el('bPrt').onclick=function(){ui.view='print';render()};
 el('bRoom').onclick=function(){ui.view='rooms';ui.rqFocused=0;ui.room=null;render()};
 el('bCap').onclick=function(){ui.view='cap';render()};
+el('bOpt').onclick=function(){ui.view='opt';render()};
 el('bFloor').onclick=function(){ui.view='floor';ui.fpPlace=null;ui.fpSel=null;render()};
 el('bExp').onclick=function(){dl('closet-backup-'+stampName()+'.json',exportText(),'application/json')};
 el('bImp').onclick=function(){el('file').click()};
@@ -3298,6 +3314,116 @@ function applyPlan(r){var oc=optimise(r),idMap={},n=0;function D(id){return idMa
   oc.smoves.forEach(function(m){var c=m.link.c;if(!m.toPort)return;if(c.a===m.link.sj.id)c.a=m.toPort.id;else if(c.b===m.link.sj.id)c.b=m.toPort.id;n++});
   oc.removals.forEach(function(d){if(S.ports.some(function(p){return p.devId===d.id&&(jackInUse(p)||trunkOf(p.id))}))return;delDevice(d.id,true);n++});
   return n}
+// ================= OPTIMIZER: plan a closet from scratch in a sandbox =================
+// The plan lives in S.plans[closetId] and never touches the real racks (Rack view keeps the real data).
+// Room drops (labelled jacks + homeruns in this closet) are dragged onto plan patch-panel jacks; cords are dragged jack → switch port.
+var PZ={U:46,W:820,NAME:150};
+function planFor(l){if(!S.plans)S.plans={};var p=S.plans[l.id];
+  if(!p){var rs=S.racks.filter(function(r){return r.locId===l.id});
+    p=S.plans[l.id]={racks:(rs.length?rs:[{name:'Rack 1',height:42}]).map(function(r,i){return {id:uid(),name:(r.label||r.name||'Rack '+(i+1)),height:r.height||42}}),devices:[],jacks:{},cords:[],created:new Date().toISOString()}}
+  return p}
+function planDrops(l){var out=[],seen={};
+  roomEntries().forEach(function(e){var w=portWhere(e.p);if(!w.l||w.l.id!==l.id)return;if(w.d&&w.d.kind==='fiber')return;
+    var id=e.h?'h:'+e.h.id:e.p.id;if(seen[id])return;seen[id]=1;
+    var room=e.room||guessRoom(e.label,e.color)||'';out.push({id:id,label:e.label||'',room:room,color:e.color||'',isRoom:e.isRoom,how:e.how,now:e.h?pn(e.p)+' (homerun)':pn(e.p)})});
+  return out.sort(function(a,b){return natCmp(roomNorm(a.room)||'~',roomNorm(b.room)||'~')||natCmp(a.label,b.label)})}
+function pdGrid(d){var n=d.portCount||0,rows=Math.max(1,Math.ceil(n/24));return {rows:rows,cols:Math.max(1,Math.ceil(n/rows))}}
+function pdPos(d,num,x,y,w,h){var g=pdGrid(d),k=num-1,row=Math.floor(k/g.cols),col=k%g.cols,ax=x+PZ.NAME,aw=w-PZ.NAME-12,cell=Math.min(26,aw/g.cols),gap=Math.floor(col/6)*4,
+    ps=Math.min(cell-4,g.rows===1?22:Math.floor((h-10)/g.rows)-3);
+  return {x:ax+col*cell+gap+cell/2,y:y+(g.rows===1?h/2:6+row*((h-12)/g.rows)+(h-12)/g.rows/2),s:ps}}
+function renderOptimizer(){var m=el('main'),l=byId(S.locations,ui.loc);
+  if(!l){m.innerHTML='<h2>Optimizer</h2><div class="card muted">Pick a closet in the sidebar to plan it.</div>';return}
+  var P=planFor(l),drops=planDrops(l),byDrop={},q=(ui.pzq||'').trim().toLowerCase();
+  Object.keys(P.jacks).forEach(function(dv){Object.keys(P.jacks[dv]).forEach(function(n){byDrop[P.jacks[dv][n]]={dev:dv,num:+n}})});
+  P.racks.forEach(function(r){});var rk=byId(P.racks,ui.pzRack)||P.racks[0];ui.pzRack=rk.id;
+  var placed=drops.filter(function(d){return byDrop[d.id]}).length;
+  var h='<div class="row"><h2 style="margin:0">Optimizer</h2><span class="muted">a sandbox plan for '+esc(l.label||l.name)+' — Rack view is not changed</span><span style="flex:1"></span>'+
+    '<span class="mono" style="color:'+(placed===drops.length&&drops.length?'var(--ok)':'var(--muted)')+'">'+placed+' / '+drops.length+' placed</span>'+
+    '<button id="pzAuto" title="Put every unplaced drop on the next free jack, colours together and rooms in order">Auto-place the rest</button><button class="dng" id="pzReset">Start over</button></div>';
+  h+='<div class="pzwrap"><aside class="pzside"><input id="pzq" type="search" placeholder="Filter rooms or labels" value="'+esc(ui.pzq||'')+'"><div class="pzlist">';
+  var lastRoom=null;drops.filter(function(d){return !q||(d.room+' '+d.label+' '+d.now).toLowerCase().indexOf(q)>=0}).forEach(function(d){
+    if(d.room!==lastRoom){lastRoom=d.room;h+='<div class="pzroom">'+(d.room?'Room '+esc(d.room):'No room set')+'</div>'}
+    var at=byDrop[d.id],dv=at&&byId(P.devices,at.dev);
+    h+='<div class="pzdrop'+(at?' placed':'')+'" data-drop="'+esc(d.id)+'" title="Now: '+esc(d.now)+'"><i style="background:'+(d.color||'var(--faint)')+'"></i><span>'+esc(dropName(d.label,d.room)||d.label||'—')+'</span><small>'+(at?esc((dv?dv.name:'?')+' · '+at.num):esc(d.now))+'</small></div>'});
+  if(!drops.length)h+='<p class="muted" style="padding:8px">No room drops in this closet yet. Label patch-panel jacks (and set their rooms) in Rack view, and they show up here to plan with.</p>';
+  h+='</div></aside><div class="pzmain"><div class="row" style="margin:0 0 6px">'+P.racks.map(function(r){return '<button class="chip'+(r.id===rk.id?' on':'')+'" data-pzr="'+r.id+'">'+esc(r.name)+' <span class="muted">'+r.height+'U</span></button>'}).join('')+
+    '<button id="pzAddR" title="Add another rack to the plan">+ Rack</button><button id="pzRenR">Rename</button>'+(P.racks.length>1?'<button id="pzDelR" class="dng">Remove rack</button>':'')+'</div><div class="pzrackwrap">'+planRackSVG(P,rk,drops)+'</div>'+
+    '<p class="muted" style="font-size:12px">Drag hardware from the right into a slot · drag a room drop onto a patch-panel jack · drag from a jack to a switch port to add a cord · drag a device by its name to move it · click a jack for options.</p></div>'+
+    '<aside class="pzhw"><div class="sideHead" style="padding:0 0 6px">Hardware</div>'+PRESETS.map(function(pr,i){return '<div class="tpl" data-ptpl="'+i+'" style="border-left-color:'+deviceColor({kind:pr.kind})+'"><span>'+esc(pr.name)+'</span><small>'+pr.h+'U</small></div>'}).join('')+'</aside></div>';
+  m.innerHTML=h;bindOptimizer(l,P,rk,drops,byDrop)}
+function planRackSVG(P,rk,drops){var U=PZ.U,W=PZ.W,T=10,H=rk.height*U,dmap={};drops.forEach(function(d){dmap[d.id]=d});
+  var s='<svg id="pzsvg" viewBox="0 0 '+(W+40)+' '+(H+T*2)+'" style="width:100%;min-width:640px;height:auto" preserveAspectRatio="xMinYMin meet"><rect x="30" y="'+T+'" width="'+W+'" height="'+H+'" fill="#1b232d" stroke="#0b1015" stroke-width="6"/>';
+  for(var u=1;u<=rk.height;u++){var y=T+(rk.height-u)*U;s+='<text x="24" y="'+(y+U/2+4)+'" font-size="11" fill="#7d8ea0" text-anchor="end" font-family="monospace">'+u+'</text><line x1="30" x2="'+(30+W)+'" y1="'+y+'" y2="'+y+'" stroke="#2a3644"/><rect class="pzslot" data-u="'+u+'" x="31" y="'+(y+1)+'" width="'+(W-2)+'" height="'+(U-2)+'" fill="transparent"/>'}
+  var lines='';
+  P.devices.filter(function(d){return d.rackId===rk.id}).forEach(function(d){var y=T+(rk.height-(d.startU+d.heightU-1))*U+2,hh=d.heightU*U-4,x=34,w=W-8,J=P.jacks[d.id]||{};
+    s+='<g class="pzdev" data-pdev="'+d.id+'"><rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+hh+'" rx="2" fill="'+(d.kind==='switch'?'#1c1f24':d.kind==='patch'?'#121315':'#22252b')+'" stroke="#000"/><rect x="'+x+'" y="'+y+'" width="4" height="'+hh+'" fill="'+deviceColor(d)+'"/>'+
+      '<text class="pzname" data-pmove="'+d.id+'" x="'+(x+12)+'" y="'+(y+17)+'" font-size="13" font-weight="700" fill="#fff" style="cursor:grab">'+esc(d.name)+'</text><text x="'+(x+12)+'" y="'+(y+31)+'" font-size="10" fill="#9aa5b1">'+esc(kN(d.kind))+' · '+d.portCount+' · U'+d.startU+'</text>'+
+      '<text class="pzx" data-pdel="'+d.id+'" x="'+(x+w-10)+'" y="'+(y+14)+'" font-size="13" fill="#f06460" text-anchor="end" style="cursor:pointer">✕</text></g>';
+    for(var n=1;n<=d.portCount;n++){var p=pdPos(d,n,x,y,w,hh),dr=dmap[J[n]],col=dr?(dr.color||'#9ca3af'):'';
+      s+='<g class="pzport" data-pp="'+d.id+':'+n+'"><rect x="'+(p.x-p.s/2)+'" y="'+(p.y-p.s/2)+'" width="'+p.s+'" height="'+p.s+'" rx="2" fill="'+(col||'#0b0d10')+'" stroke="'+(d.kind==='patch'?'#c3c9d1':'#4a505a')+'" stroke-width="1"/>'+
+        '<text x="'+p.x+'" y="'+(p.y+3.5)+'" font-size="'+(p.s>=18?9:7)+'" text-anchor="middle" fill="'+(col?inkFor(col):'#8b93a0')+'" pointer-events="none">'+n+'</text><title>'+esc(d.name+' port '+n+(dr?' — '+(dr.room?'room '+dr.room+' · ':'')+(dr.label||''):''))+'</title></g>'}});
+  P.cords.forEach(function(c){var a=byId(P.devices,c[0]),b=byId(P.devices,c[2]);if(!a||!b||a.rackId!==rk.id||b.rackId!==rk.id)return;
+    function at(d,n){var y=T+(rk.height-(d.startU+d.heightU-1))*U+2;return pdPos(d,n,34,y,W-8,d.heightU*U-4)}
+    var p1=at(a,c[1]),p2=at(b,c[3]),J=(P.jacks[a.id]||{})[c[1]]||(P.jacks[b.id]||{})[c[3]],col=(dmap[J]&&dmap[J].color)||'#9ca3af',mx=Math.max(p1.x,p2.x)+18;
+    lines+='<path d="M'+p1.x+' '+p1.y+' C'+mx+' '+p1.y+' '+mx+' '+p2.y+' '+p2.x+' '+p2.y+'" stroke="#000" stroke-opacity=".5" stroke-width="4" fill="none" pointer-events="none"/><path d="M'+p1.x+' '+p1.y+' C'+mx+' '+p1.y+' '+mx+' '+p2.y+' '+p2.x+' '+p2.y+'" stroke="'+col+'" stroke-width="2" fill="none" pointer-events="none"/>'});
+  return s+'<g id="pzcords">'+lines+'</g><g id="pzghost"></g></svg>'}
+function planFits(P,rk,u,hU,skip){if(u<1||u+hU-1>rk.height)return false;return !P.devices.some(function(d){return d.rackId===rk.id&&d.id!==skip&&u+hU-1>=d.startU&&u<=d.startU+d.heightU-1})}
+function planName(P,kind){var pre=kind==='patch'?'Patch Panel ':kind==='switch'?'Switch ':kN(kind)+' ',n=1;while(P.devices.some(function(d){return d.name===pre+n}))n++;return pre+n}
+function bindOptimizer(l,P,rk,drops,byDrop){var m=el('main'),svg=el('pzsvg');
+  function done(){save();renderOptimizer()}
+  el('pzq').oninput=function(){ui.pzq=el('pzq').value;var pos=el('pzq').selectionStart;renderOptimizer();var n=el('pzq');n.focus();try{n.setSelectionRange(pos,pos)}catch(e){}};
+  m.querySelectorAll('[data-pzr]').forEach(function(b){b.onclick=function(){ui.pzRack=b.getAttribute('data-pzr');renderOptimizer()}});
+  el('pzAddR').onclick=function(){var hgt=parseInt(prompt('Rack height in U',42),10);if(!(hgt>0&&hgt<=60))return;var r={id:uid(),name:'Rack '+(P.racks.length+1),height:hgt};P.racks.push(r);ui.pzRack=r.id;done()};
+  el('pzRenR').onclick=function(){var n=prompt('Rack name',rk.name);if(n&&n.trim()){rk.name=n.trim();done()}};
+  if(el('pzDelR'))el('pzDelR').onclick=function(){if(!confirm('Remove '+rk.name+' and its planned hardware from the plan?'))return;var gone={};P.devices.forEach(function(d){if(d.rackId===rk.id)gone[d.id]=1});
+    P.devices=P.devices.filter(function(d){return !gone[d.id]});Object.keys(gone).forEach(function(k){delete P.jacks[k]});P.cords=P.cords.filter(function(c){return !gone[c[0]]&&!gone[c[2]]});P.racks=P.racks.filter(function(r){return r!==rk});ui.pzRack=null;done()};
+  el('pzReset').onclick=function(){typeToDelete('plan for',l.label||l.name,'This clears the plan for <b>'+esc(l.label||l.name)+'</b> — its racks, hardware, placed drops and cords. Rack view is not touched.',function(){delete S.plans[l.id];ui.pzRack=null;done()})};
+  el('pzAuto').onclick=function(){var free=[];P.racks.forEach(function(r){P.devices.filter(function(d){return d.rackId===r.id&&d.kind==='patch'}).sort(function(a,b){return b.startU-a.startU}).forEach(function(d){var J=P.jacks[d.id]||{};for(var n=1;n<=d.portCount;n++)if(!J[n])free.push({d:d,n:n})})});
+    var todo=drops.filter(function(d){return !byDrop[d.id]}).sort(function(a,b){return colorRank(a.color)-colorRank(b.color)||natCmp(roomNorm(a.room),roomNorm(b.room))||natCmp(a.label,b.label)});
+    if(!todo.length)return toast('Every drop is already placed.');if(!free.length)return toast('Add a patch panel first — there are no free jacks in the plan.',1);
+    var k=0;todo.forEach(function(d){var f=free[k];if(!f)return;k++;(P.jacks[f.d.id]=P.jacks[f.d.id]||{})[f.n]=d.id});done();toast('Placed '+k+' drop'+(k===1?'':'s')+(k<todo.length?' — '+(todo.length-k)+' still need a panel':'')+'.')};
+  m.querySelectorAll('[data-pdel]').forEach(function(t){t.onclick=function(e){e.stopPropagation();var d=byId(P.devices,t.getAttribute('data-pdel'));var used=Object.keys(P.jacks[d.id]||{}).length;
+    if(!confirm('Remove '+d.name+' from the plan?'+(used?' Its '+used+' placed drop'+(used===1?'':'s')+' go back to the list.':'')))return;
+    P.devices=P.devices.filter(function(x){return x!==d});delete P.jacks[d.id];P.cords=P.cords.filter(function(c){return c[0]!==d.id&&c[2]!==d.id});done()}});
+  // ---- one pointer-based drag for everything: drops, hardware, devices, jacks
+  var drag=null,ghost=null;
+  function uAt(ev){var r=svg.getBoundingClientRect(),k=(PZ.W+40)/r.width,yy=(ev.clientY-r.top)*k-10;return rk.height-Math.floor(yy/PZ.U)}
+  function hit(ev){var t=document.elementFromPoint(ev.clientX,ev.clientY);return t&&t.closest?t.closest('[data-pp]'):null}
+  function clearHot(){svg.querySelectorAll('.hot').forEach(function(x){x.classList.remove('hot')});el('pzghost').innerHTML=''}
+  function start(ev,info,label){drag=Object.assign({x:ev.clientX,y:ev.clientY,live:false},info);drag.label=label}
+  m.onpointerdown=function(ev){if(ev.button!==0)return;var t=ev.target;
+    var dr=t.closest&&t.closest('[data-drop]');if(dr){var d=drops.filter(function(x){return x.id===dr.getAttribute('data-drop')})[0];return start(ev,{type:'drop',id:d.id},dropName(d.label,d.room)||d.label)}
+    var tp=t.closest&&t.closest('[data-ptpl]');if(tp){var pr=PRESETS[+tp.getAttribute('data-ptpl')];return start(ev,{type:'hw',pr:pr},pr.name)}
+    var mv=t.closest&&t.closest('[data-pmove]');if(mv){var d2=byId(P.devices,mv.getAttribute('data-pmove'));return start(ev,{type:'move',d:d2},d2.name)}
+    var pp=t.closest&&t.closest('[data-pp]');if(pp){var v=pp.getAttribute('data-pp').split(':');start(ev,{type:'port',dev:v[0],num:+v[1]},byId(P.devices,v[0]).name+' · '+v[1])}};
+  window.onpointermove=function(ev){if(!drag)return;if(!drag.live){if(Math.abs(ev.clientX-drag.x)+Math.abs(ev.clientY-drag.y)<5)return;drag.live=true;
+      ghost=document.createElement('div');ghost.className='pzghost';ghost.textContent=drag.label;document.body.appendChild(ghost);document.body.style.cursor='grabbing'}
+    ghost.style.left=(ev.clientX+12)+'px';ghost.style.top=(ev.clientY+10)+'px';clearHot();
+    if(drag.type==='hw'||drag.type==='move'){var hU=drag.type==='hw'?drag.pr.h:drag.d.heightU,u=uAt(ev)-hU+1;
+      if(u>=1&&u<=rk.height){var ok=planFits(P,rk,u,hU,drag.d&&drag.d.id),y=10+(rk.height-(u+hU-1))*PZ.U;
+        el('pzghost').innerHTML='<rect x="34" y="'+(y+2)+'" width="'+(PZ.W-8)+'" height="'+(hU*PZ.U-4)+'" rx="3" fill="'+(ok?'rgba(240,163,58,.25)':'rgba(240,96,96,.2)')+'" stroke="'+(ok?'#f0a33a':'#f06460')+'" stroke-dasharray="6 4"/>'}}
+    else{var g=hit(ev);if(g)g.classList.add('hot')}};
+  window.onpointerup=function(ev){if(!drag)return;var d=drag;drag=null;document.body.style.cursor='';if(ghost){ghost.remove();ghost=null}clearHot();
+    if(!d.live){if(d.type==='port')jackMenu(ev,d.dev,d.num);return}
+    if(d.type==='hw'||d.type==='move'){var hU=d.type==='hw'?d.pr.h:d.d.heightU,u=uAt(ev)-hU+1;if(!planFits(P,rk,u,hU,d.d&&d.d.id))return toast('That spot is taken or off the rack.',1);
+      if(d.type==='hw')P.devices.push({id:uid(),rackId:rk.id,kind:d.pr.kind,name:planName(P,d.pr.kind),portCount:d.pr.ports||0,startU:u,heightU:d.pr.h});else d.d.startU=u;return done()}
+    var g=hit(ev);if(!g)return;var v=g.getAttribute('data-pp').split(':'),td=byId(P.devices,v[0]),tn=+v[1];
+    if(d.type==='drop'){if(td.kind!=='patch')return toast('Room drops go on patch-panel jacks. Drag from a jack to a switch port to add a cord.',1);
+      var cur=byDrop[d.id];if(cur)delete P.jacks[cur.dev][cur.num];var J=P.jacks[td.id]=P.jacks[td.id]||{},prev=J[tn];J[tn]=d.id;
+      if(prev&&cur)P.jacks[cur.dev][cur.num]=prev;return done()}
+    if(d.type==='port'){if(d.dev===td.id&&d.num===tn)return;var sd=byId(P.devices,d.dev),sJ=P.jacks[d.dev]||{};
+      if(sd.kind==='patch'&&td.kind==='patch'){var tJ=P.jacks[td.id]=P.jacks[td.id]||{},a=sJ[d.num],b=tJ[tn];if(!a)return;tJ[tn]=a;if(b)sJ[d.num]=b;else delete sJ[d.num];return done()}
+      if(d.dev===td.id)return;
+      P.cords=P.cords.filter(function(c){return !((c[0]===d.dev&&c[1]===d.num)||(c[2]===d.dev&&c[3]===d.num)||(c[0]===td.id&&c[1]===tn)||(c[2]===td.id&&c[3]===tn))});
+      P.cords.push([d.dev,d.num,td.id,tn]);return done()}};
+  function jackMenu(ev,dev,num){var d=byId(P.devices,dev),J=P.jacks[dev]||{},dr=drops.filter(function(x){return x.id===J[num]})[0],cd=P.cords.filter(function(c){return (c[0]===dev&&c[1]===num)||(c[2]===dev&&c[3]===num)})[0],it=[];
+    if(dr)it.push(['Take '+(dropName(dr.label,dr.room)||dr.label)+' off this jack',function(){delete J[num];done()}]);
+    if(cd){var o=cd[0]===dev?[cd[2],cd[3]]:[cd[0],cd[1]],od=byId(P.devices,o[0]);it.push(['Remove cord to '+(od?od.name:'?')+' · '+o[1],function(){P.cords=P.cords.filter(function(c){return c!==cd});done()}])}
+    if(!it.length)it.push(['Drag a room drop here, or drag from here to another port to add a cord',function(){}]);
+    closeCtx();var mm=document.createElement('div');mm.className='menu';mm.innerHTML='<div class="mh">'+esc(d.name+' · '+num+(dr?' — '+(dr.room?'room '+dr.room+' · ':'')+dr.label:''))+'</div>';
+    it.forEach(function(x){var b=document.createElement('div');b.className='mi';b.textContent=x[0];b.onclick=function(){closeCtx();x[1]()};mm.appendChild(b)});
+    document.body.appendChild(mm);ctxEl=mm;mm.style.left=Math.min(ev.clientX,innerWidth-260)+'px';mm.style.top=Math.min(ev.clientY,innerHeight-mm.offsetHeight-8)+'px';
+    setTimeout(function(){document.addEventListener('click',closeCtx,{once:true})},0)}}
 // ---------- Global search ----------
 var gs={res:[],sel:0};
 function gsNorm(t){return String(t==null?'':t).toLowerCase()}
