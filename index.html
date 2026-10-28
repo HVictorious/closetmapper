@@ -349,7 +349,7 @@ function kindRow(k){for(var i=0;i<DEVICE_KINDS.length;i++)if(DEVICE_KINDS[i][0]=
 function kindOpts(){return DEVICE_KINDS.map(function(k){return [k[0],k[1]]})}
 function portsTxt(d){return d.portCount?d.portCount+(d.kind==='pdu'||d.kind==='ups'?' outlets':' ports'):(d.kind==='pdu'||d.kind==='ups'?'no outlets':'no ports')}
 function deviceColor(d){return d.color||DEV_FALLBACK[d.kind]||'#2563eb'}
-var APP_VERSION='3.3.0'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
+var APP_VERSION='3.3.1'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
 
 var Q='"'; // double-quote char used when building the cable rows on the Labels tab
 function siteFold(){var c={};(S.sites||[]).forEach(function(st,i){if(i>0)c[st.id]=true});return c}
@@ -3332,6 +3332,7 @@ function pdPos(d,num,x,y,w,h){var g=pdGrid(d),k=num-1,row=Math.floor(k/g.cols),c
     ps=Math.min(cell-4,g.rows===1?22:Math.floor((h-10)/g.rows)-3);
   return {x:ax+col*cell+gap+cell/2,y:y+(g.rows===1?h/2:6+row*((h-12)/g.rows)+(h-12)/g.rows/2),s:ps}}
 function renderOptimizer(){var m=el('main'),l=byId(S.locations,ui.loc);
+  var keep={wy:window.pageYOffset,wx:window.pageXOffset,rk:el('pzrw')?el('pzrw').scrollTop:null,ls:document.querySelector('.pzlist')?document.querySelector('.pzlist').scrollTop:null};
   if(!l){m.innerHTML='<h2>Optimizer</h2><div class="card muted">Pick a closet in the sidebar to plan it.</div>';return}
   var P=planFor(l),drops=planDrops(l),byDrop={},q=(ui.pzq||'').trim().toLowerCase();
   Object.keys(P.jacks).forEach(function(dv){Object.keys(P.jacks[dv]).forEach(function(n){byDrop[P.jacks[dv][n]]={dev:dv,num:+n}})});
@@ -3347,17 +3348,18 @@ function renderOptimizer(){var m=el('main'),l=byId(S.locations,ui.loc);
     h+='<div class="pzdrop'+(at?' placed':'')+'" data-drop="'+esc(d.id)+'" title="Now: '+esc(d.now)+'"><i style="background:'+(d.color||'var(--faint)')+'"></i><span>'+esc(dropName(d.label,d.room)||d.label||'—')+'</span><small>'+(at?esc((dv?dv.name:'?')+' · '+at.num):esc(d.now))+'</small></div>'});
   if(!drops.length)h+='<p class="muted" style="padding:8px">No room drops in this closet yet. Label patch-panel jacks (and set their rooms) in Rack view, and they show up here to plan with.</p>';
   h+='</div></aside><div class="pzmain"><div class="row" style="margin:0 0 6px">'+P.racks.map(function(r){return '<button class="chip'+(r.id===rk.id?' on':'')+'" data-pzr="'+r.id+'">'+esc(r.name)+' <span class="muted">'+r.height+'U</span></button>'}).join('')+
-    '<button id="pzAddR" title="Add another rack to the plan">+ Rack</button><button id="pzRenR">Rename</button>'+(P.racks.length>1?'<button id="pzDelR" class="dng">Remove rack</button>':'')+'</div><div class="pzrackwrap">'+planRackSVG(P,rk,drops)+'</div>'+
-    '<p class="muted" style="font-size:12px">Drag hardware from the right into a slot · drag a room drop onto a patch-panel jack · drag from a jack to a switch port to add a cord · drag a device by its name to move it · click a jack for options.</p></div>'+
+    '<button id="pzAddR" title="Add another rack to the plan">+ Rack</button><button id="pzRenR">Rename</button>'+(P.racks.length>1?'<button id="pzDelR" class="dng">Remove rack</button>':'')+'</div><div class="pzrackwrap" id="pzrw">'+planRackSVG(P,rk,drops)+'</div>'+
+    '<p class="muted" style="font-size:12px">Drag hardware from the right into a slot · drag any device to move it · drag a room drop onto a patch-panel jack · drag a jack back to the list to take it off · drag from a jack to a switch port to add a cord · click a jack for more.</p></div>'+
     '<aside class="pzhw"><div class="sideHead" style="padding:0 0 6px">Hardware</div>'+PRESETS.map(function(pr,i){return '<div class="tpl" data-ptpl="'+i+'" style="border-left-color:'+deviceColor({kind:pr.kind})+'"><span>'+esc(pr.name)+'</span><small>'+pr.h+'U</small></div>'}).join('')+'</aside></div>';
-  m.innerHTML=h;bindOptimizer(l,P,rk,drops,byDrop)}
+  m.innerHTML=h;bindOptimizer(l,P,rk,drops,byDrop);
+  if(keep.rk!=null&&el('pzrw'))el('pzrw').scrollTop=keep.rk;if(keep.ls!=null&&document.querySelector('.pzlist'))document.querySelector('.pzlist').scrollTop=keep.ls;window.scrollTo(keep.wx,keep.wy)}
 function planRackSVG(P,rk,drops){var U=PZ.U,W=PZ.W,T=10,H=rk.height*U,dmap={};drops.forEach(function(d){dmap[d.id]=d});
   var s='<svg id="pzsvg" viewBox="0 0 '+(W+40)+' '+(H+T*2)+'" style="width:100%;min-width:640px;height:auto" preserveAspectRatio="xMinYMin meet"><rect x="30" y="'+T+'" width="'+W+'" height="'+H+'" fill="#1b232d" stroke="#0b1015" stroke-width="6"/>';
   for(var u=1;u<=rk.height;u++){var y=T+(rk.height-u)*U;s+='<text x="24" y="'+(y+U/2+4)+'" font-size="11" fill="#7d8ea0" text-anchor="end" font-family="monospace">'+u+'</text><line x1="30" x2="'+(30+W)+'" y1="'+y+'" y2="'+y+'" stroke="#2a3644"/><rect class="pzslot" data-u="'+u+'" x="31" y="'+(y+1)+'" width="'+(W-2)+'" height="'+(U-2)+'" fill="transparent"/>'}
   var lines='';
   P.devices.filter(function(d){return d.rackId===rk.id}).forEach(function(d){var y=T+(rk.height-(d.startU+d.heightU-1))*U+2,hh=d.heightU*U-4,x=34,w=W-8,J=P.jacks[d.id]||{};
-    s+='<g class="pzdev" data-pdev="'+d.id+'"><rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+hh+'" rx="2" fill="'+(d.kind==='switch'?'#1c1f24':d.kind==='patch'?'#121315':'#22252b')+'" stroke="#000"/><rect x="'+x+'" y="'+y+'" width="4" height="'+hh+'" fill="'+deviceColor(d)+'"/>'+
-      '<text class="pzname" data-pmove="'+d.id+'" x="'+(x+12)+'" y="'+(y+17)+'" font-size="13" font-weight="700" fill="#fff" style="cursor:grab">'+esc(d.name)+'</text><text x="'+(x+12)+'" y="'+(y+31)+'" font-size="10" fill="#9aa5b1">'+esc(kN(d.kind))+' · '+d.portCount+' · U'+d.startU+'</text>'+
+    s+='<g class="pzdev" data-pdev="'+d.id+'" data-pmove="'+d.id+'" style="cursor:grab"><rect x=""'+x+'" y="'+y+'" width="'+w+'" height="'+hh+'" rx="2" fill="'+(d.kind==='switch'?'#1c1f24':d.kind==='patch'?'#121315':'#22252b')+'" stroke="#000"/><rect x="'+x+'" y="'+y+'" width="4" height="'+hh+'" fill="'+deviceColor(d)+'"/>'+
+      '<text class="pzname" x="'+(x+12)+'" y="'+(y+17)+'" font-size="13" font-weight="700" fill="#fff" style="cursor:grab">'+esc(d.name)+'</text><text x="'+(x+12)+'" y="'+(y+31)+'" font-size="10" fill="#9aa5b1">'+esc(kN(d.kind))+' · '+d.portCount+' · U'+d.startU+'</text>'+
       '<text class="pzx" data-pdel="'+d.id+'" x="'+(x+w-10)+'" y="'+(y+14)+'" font-size="13" fill="#f06460" text-anchor="end" style="cursor:pointer">✕</text></g>';
     for(var n=1;n<=d.portCount;n++){var p=pdPos(d,n,x,y,w,hh),dr=dmap[J[n]],col=dr?(dr.color||'#9ca3af'):'';
       s+='<g class="pzport" data-pp="'+d.id+':'+n+'"><rect x="'+(p.x-p.s/2)+'" y="'+(p.y-p.s/2)+'" width="'+p.s+'" height="'+p.s+'" rx="2" fill="'+(col||'#0b0d10')+'" stroke="'+(d.kind==='patch'?'#c3c9d1':'#4a505a')+'" stroke-width="1"/>'+
@@ -3404,7 +3406,9 @@ function bindOptimizer(l,P,rk,drops,byDrop){var m=el('main'),svg=el('pzsvg');
         el('pzghost').innerHTML='<rect x="34" y="'+(y+2)+'" width="'+(PZ.W-8)+'" height="'+(hU*PZ.U-4)+'" rx="3" fill="'+(ok?'rgba(240,163,58,.25)':'rgba(240,96,96,.2)')+'" stroke="'+(ok?'#f0a33a':'#f06460')+'" stroke-dasharray="6 4"/>'}}
     else{var g=hit(ev);if(g)g.classList.add('hot')}};
   window.onpointerup=function(ev){if(!drag)return;var d=drag;drag=null;document.body.style.cursor='';if(ghost){ghost.remove();ghost=null}clearHot();
-    if(!d.live){if(d.type==='port')jackMenu(ev,d.dev,d.num);return}
+    if(!d.live){if(d.type==='port'){var cx=ev.clientX,cy=ev.clientY;setTimeout(function(){jackMenu({clientX:cx,clientY:cy},d.dev,d.num)},30)}return}
+    var inList=document.elementFromPoint(ev.clientX,ev.clientY);inList=inList&&inList.closest&&inList.closest('.pzside');
+    if(inList&&d.type==='port'){var J0=P.jacks[d.dev]||{};if(J0[d.num]){delete J0[d.num];toast('Taken off the jack.');return done()}return}
     if(d.type==='hw'||d.type==='move'){var hU=d.type==='hw'?d.pr.h:d.d.heightU,u=uAt(ev)-hU+1;if(!planFits(P,rk,u,hU,d.d&&d.d.id))return toast('That spot is taken or off the rack.',1);
       if(d.type==='hw')P.devices.push({id:uid(),rackId:rk.id,kind:d.pr.kind,name:planName(P,d.pr.kind),portCount:d.pr.ports||0,startU:u,heightU:d.pr.h});else d.d.startU=u;return done()}
     var g=hit(ev);if(!g)return;var v=g.getAttribute('data-pp').split(':'),td=byId(P.devices,v[0]),tn=+v[1];
@@ -3416,6 +3420,7 @@ function bindOptimizer(l,P,rk,drops,byDrop){var m=el('main'),svg=el('pzsvg');
       if(d.dev===td.id)return;
       P.cords=P.cords.filter(function(c){return !((c[0]===d.dev&&c[1]===d.num)||(c[2]===d.dev&&c[3]===d.num)||(c[0]===td.id&&c[1]===tn)||(c[2]===td.id&&c[3]===tn))});
       P.cords.push([d.dev,d.num,td.id,tn]);return done()}};
+  svg.oncontextmenu=function(ev){var g=ev.target.closest&&ev.target.closest('[data-pp]');if(!g)return;ev.preventDefault();ev.stopPropagation();var v=g.getAttribute('data-pp').split(':');jackMenu(ev,v[0],+v[1])};
   function jackMenu(ev,dev,num){var d=byId(P.devices,dev),J=P.jacks[dev]||{},dr=drops.filter(function(x){return x.id===J[num]})[0],cd=P.cords.filter(function(c){return (c[0]===dev&&c[1]===num)||(c[2]===dev&&c[3]===num)})[0],it=[];
     if(dr)it.push(['Take '+(dropName(dr.label,dr.room)||dr.label)+' off this jack',function(){delete J[num];done()}]);
     if(cd){var o=cd[0]===dev?[cd[2],cd[3]]:[cd[0],cd[1]],od=byId(P.devices,o[0]);it.push(['Remove cord to '+(od?od.name:'?')+' · '+o[1],function(){P.cords=P.cords.filter(function(c){return c!==cd});done()}])}
@@ -3423,7 +3428,7 @@ function bindOptimizer(l,P,rk,drops,byDrop){var m=el('main'),svg=el('pzsvg');
     closeCtx();var mm=document.createElement('div');mm.className='menu';mm.innerHTML='<div class="mh">'+esc(d.name+' · '+num+(dr?' — '+(dr.room?'room '+dr.room+' · ':'')+dr.label:''))+'</div>';
     it.forEach(function(x){var b=document.createElement('div');b.className='mi';b.textContent=x[0];b.onclick=function(){closeCtx();x[1]()};mm.appendChild(b)});
     document.body.appendChild(mm);ctxEl=mm;mm.style.left=Math.min(ev.clientX,innerWidth-260)+'px';mm.style.top=Math.min(ev.clientY,innerHeight-mm.offsetHeight-8)+'px';
-    setTimeout(function(){document.addEventListener('click',closeCtx,{once:true})},0)}}
+  }}
 // ---------- Global search ----------
 var gs={res:[],sel:0};
 function gsNorm(t){return String(t==null?'':t).toLowerCase()}
