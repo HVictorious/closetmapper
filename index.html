@@ -349,7 +349,7 @@ function kindRow(k){for(var i=0;i<DEVICE_KINDS.length;i++)if(DEVICE_KINDS[i][0]=
 function kindOpts(){return DEVICE_KINDS.map(function(k){return [k[0],k[1]]})}
 function portsTxt(d){return d.portCount?d.portCount+(d.kind==='pdu'||d.kind==='ups'?' outlets':' ports'):(d.kind==='pdu'||d.kind==='ups'?'no outlets':'no ports')}
 function deviceColor(d){return d.color||DEV_FALLBACK[d.kind]||'#2563eb'}
-var APP_VERSION='3.3.1'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
+var APP_VERSION='3.3.2'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
 
 var Q='"'; // double-quote char used when building the cable rows on the Labels tab
 function siteFold(){var c={};(S.sites||[]).forEach(function(st,i){if(i>0)c[st.id]=true});return c}
@@ -3317,7 +3317,7 @@ function applyPlan(r){var oc=optimise(r),idMap={},n=0;function D(id){return idMa
 // ================= OPTIMIZER: plan a closet from scratch in a sandbox =================
 // The plan lives in S.plans[closetId] and never touches the real racks (Rack view keeps the real data).
 // Room drops (labelled jacks + homeruns in this closet) are dragged onto plan patch-panel jacks; cords are dragged jack → switch port.
-var PZ={U:46,W:820,NAME:150};
+var PZ={U:70,W:820,NAME:150};
 function planFor(l){if(!S.plans)S.plans={};var p=S.plans[l.id];
   if(!p){var rs=S.racks.filter(function(r){return r.locId===l.id});
     p=S.plans[l.id]={racks:(rs.length?rs:[{name:'Rack 1',height:42}]).map(function(r,i){return {id:uid(),name:(r.label||r.name||'Rack '+(i+1)),height:r.height||42}}),devices:[],jacks:{},cords:[],created:new Date().toISOString()}}
@@ -3328,9 +3328,19 @@ function planDrops(l){var out=[],seen={};
     var room=e.room||guessRoom(e.label,e.color)||'';out.push({id:id,label:e.label||'',room:room,color:e.color||'',isRoom:e.isRoom,how:e.how,now:e.h?pn(e.p)+' (homerun)':pn(e.p)})});
   return out.sort(function(a,b){return natCmp(roomNorm(a.room)||'~',roomNorm(b.room)||'~')||natCmp(a.label,b.label)})}
 function pdGrid(d){var n=d.portCount||0,rows=Math.max(1,Math.ceil(n/24));return {rows:rows,cols:Math.max(1,Math.ceil(n/rows))}}
-function pdPos(d,num,x,y,w,h){var g=pdGrid(d),k=num-1,row=Math.floor(k/g.cols),col=k%g.cols,ax=x+PZ.NAME,aw=w-PZ.NAME-12,cell=Math.min(26,aw/g.cols),gap=Math.floor(col/6)*4,
-    ps=Math.min(cell-4,g.rows===1?22:Math.floor((h-10)/g.rows)-3);
-  return {x:ax+col*cell+gap+cell/2,y:y+(g.rows===1?h/2:6+row*((h-12)/g.rows)+(h-12)/g.rows/2),s:ps}}
+function pdPos(d,num,x,y,w,h){var g=pdGrid(d),k=num-1,row=Math.floor(k/g.cols),col=k%g.cols,ax=x+PZ.NAME,aw=w-PZ.NAME-12,cell=Math.min(26,(aw-Math.floor((g.cols-1)/6)*4)/g.cols),gap=Math.floor(col/6)*4,cx=ax+col*cell+gap+cell/2;
+  if(d.kind==='patch'&&h<=PZ.U){var ps=Math.min(cell-5,g.rows===1?19:13);
+    if(g.rows===1)return {x:cx,y:y+h-6-ps/2,s:ps,row:0,rows:1,lt:y+3,lb:y+h-6-ps-3};
+    var cy=y+h/2+(row===0?-(ps/2+1.5):ps/2+1.5);return {x:cx,y:cy,s:ps,row:row,rows:2,lt:row===0?y+2:cy+ps/2+2,lb:row===0?cy-ps/2-2:y+h-2}}
+  var ps2=Math.min(cell-4,g.rows===1?22:Math.floor((h-10)/g.rows)-3);
+  return {x:cx,y:y+(g.rows===1?h/2:6+row*((h-12)/g.rows)+(h-12)/g.rows/2),s:ps2}}
+// on a crowded 48-port panel show the short form: the drop within the room, or the room number
+function pzShort(dr,tight){if(!tight)return dr.label||dr.room;var dn2=dropName(dr.label,dr.room);if(dn2&&dn2!==dr.label)return dn2;return dr.room||dr.label}
+// a jack's label written sideways above (or for a 48-port panel's bottom row, below) the jack, up to two short lines
+function pzLabel(p,text,fill){if(!text||p.lt==null)return '';var room=p.lb-p.lt,fs=p.rows===2?7:8,mc=Math.max(2,Math.floor(room/(fs*0.58))),t=String(text).trim(),lines;
+  if(t.length<=mc)lines=[t];else{var cut=t.lastIndexOf(' ',mc);if(cut<2)cut=mc;var a=t.slice(0,cut).trim(),b=t.slice(cut).trim();if(b.length>mc)b=b.slice(0,mc-1)+'…';lines=[a,b]}
+  var gap=fs+1,x1=lines.length===1?p.x+fs*0.36:p.x-gap/2+fs*0.36,below=p.rows===2&&p.row===1;
+  return lines.map(function(ln,i){return '<text transform="translate('+(x1+i*gap)+','+(below?p.lt:p.lb)+') rotate(-90)"'+(below?' text-anchor="end"':'')+' font-size="'+fs+'" fill="'+fill+'" stroke="#121315" stroke-width="2.4" paint-order="stroke" pointer-events="none">'+esc(ln)+'</text>'}).join('')}
 function renderOptimizer(){var m=el('main'),l=byId(S.locations,ui.loc);
   var keep={wy:window.pageYOffset,wx:window.pageXOffset,rk:el('pzrw')?el('pzrw').scrollTop:null,ls:document.querySelector('.pzlist')?document.querySelector('.pzlist').scrollTop:null};
   if(!l){m.innerHTML='<h2>Optimizer</h2><div class="card muted">Pick a closet in the sidebar to plan it.</div>';return}
@@ -3358,12 +3368,12 @@ function planRackSVG(P,rk,drops){var U=PZ.U,W=PZ.W,T=10,H=rk.height*U,dmap={};dr
   for(var u=1;u<=rk.height;u++){var y=T+(rk.height-u)*U;s+='<text x="24" y="'+(y+U/2+4)+'" font-size="11" fill="#7d8ea0" text-anchor="end" font-family="monospace">'+u+'</text><line x1="30" x2="'+(30+W)+'" y1="'+y+'" y2="'+y+'" stroke="#2a3644"/><rect class="pzslot" data-u="'+u+'" x="31" y="'+(y+1)+'" width="'+(W-2)+'" height="'+(U-2)+'" fill="transparent"/>'}
   var lines='';
   P.devices.filter(function(d){return d.rackId===rk.id}).forEach(function(d){var y=T+(rk.height-(d.startU+d.heightU-1))*U+2,hh=d.heightU*U-4,x=34,w=W-8,J=P.jacks[d.id]||{};
-    s+='<g class="pzdev" data-pdev="'+d.id+'" data-pmove="'+d.id+'" style="cursor:grab"><rect x=""'+x+'" y="'+y+'" width="'+w+'" height="'+hh+'" rx="2" fill="'+(d.kind==='switch'?'#1c1f24':d.kind==='patch'?'#121315':'#22252b')+'" stroke="#000"/><rect x="'+x+'" y="'+y+'" width="4" height="'+hh+'" fill="'+deviceColor(d)+'"/>'+
+    s+='<g class="pzdev" data-pdev="'+d.id+'" data-pmove="'+d.id+'" style="cursor:grab"><rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+hh+'" rx="2" fill="'+(d.kind==='switch'?'#1c1f24':d.kind==='patch'?'#121315':'#22252b')+'" stroke="#000"/><rect x="'+x+'" y="'+y+'" width="4" height="'+hh+'" fill="'+deviceColor(d)+'"/>'+
       '<text class="pzname" x="'+(x+12)+'" y="'+(y+17)+'" font-size="13" font-weight="700" fill="#fff" style="cursor:grab">'+esc(d.name)+'</text><text x="'+(x+12)+'" y="'+(y+31)+'" font-size="10" fill="#9aa5b1">'+esc(kN(d.kind))+' · '+d.portCount+' · U'+d.startU+'</text>'+
       '<text class="pzx" data-pdel="'+d.id+'" x="'+(x+w-10)+'" y="'+(y+14)+'" font-size="13" fill="#f06460" text-anchor="end" style="cursor:pointer">✕</text></g>';
     for(var n=1;n<=d.portCount;n++){var p=pdPos(d,n,x,y,w,hh),dr=dmap[J[n]],col=dr?(dr.color||'#9ca3af'):'';
       s+='<g class="pzport" data-pp="'+d.id+':'+n+'"><rect x="'+(p.x-p.s/2)+'" y="'+(p.y-p.s/2)+'" width="'+p.s+'" height="'+p.s+'" rx="2" fill="'+(col||'#0b0d10')+'" stroke="'+(d.kind==='patch'?'#c3c9d1':'#4a505a')+'" stroke-width="1"/>'+
-        '<text x="'+p.x+'" y="'+(p.y+3.5)+'" font-size="'+(p.s>=18?9:7)+'" text-anchor="middle" fill="'+(col?inkFor(col):'#8b93a0')+'" pointer-events="none">'+n+'</text><title>'+esc(d.name+' port '+n+(dr?' — '+(dr.room?'room '+dr.room+' · ':'')+(dr.label||''):''))+'</title></g>'}});
+        '<text x="'+p.x+'" y="'+(p.y+3.5)+'" font-size="'+(p.s>=18?9:7)+'" text-anchor="middle" fill="'+(col?inkFor(col):'#8b93a0')+'" pointer-events="none">'+n+'</text>'+(dr&&d.kind==='patch'?pzLabel(p,pzShort(dr,p.rows===2),'#e8edf2'):'')+'<title>'+esc(d.name+' port '+n+(dr?' — '+(dr.room?'room '+dr.room+' · ':'')+(dr.label||''):''))+'</title></g>'}});
   P.cords.forEach(function(c){var a=byId(P.devices,c[0]),b=byId(P.devices,c[2]);if(!a||!b||a.rackId!==rk.id||b.rackId!==rk.id)return;
     function at(d,n){var y=T+(rk.height-(d.startU+d.heightU-1))*U+2;return pdPos(d,n,34,y,W-8,d.heightU*U-4)}
     var p1=at(a,c[1]),p2=at(b,c[3]),J=(P.jacks[a.id]||{})[c[1]]||(P.jacks[b.id]||{})[c[3]],col=(dmap[J]&&dmap[J].color)||'#9ca3af',mx=Math.max(p1.x,p2.x)+18;
