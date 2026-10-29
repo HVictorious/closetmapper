@@ -400,7 +400,7 @@ function kindRow(k){for(var i=0;i<DEVICE_KINDS.length;i++)if(DEVICE_KINDS[i][0]=
 function kindOpts(){return DEVICE_KINDS.map(function(k){return [k[0],k[1]]})}
 function portsTxt(d){return d.portCount?d.portCount+(d.kind==='pdu'||d.kind==='ups'?' outlets':' ports'):(d.kind==='pdu'||d.kind==='ups'?'no outlets':'no ports')}
 function deviceColor(d){return d.color||DEV_FALLBACK[d.kind]||'#2563eb'}
-var APP_VERSION='4.0.0'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
+var APP_VERSION='4.0.1'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
 
 var Q='"'; // double-quote char used when building the cable rows on the Labels tab
 function siteFold(){var c={};(S.sites||[]).forEach(function(st,i){if(i>0)c[st.id]=true});return c}
@@ -1491,6 +1491,7 @@ function moveDevice(d,su){var r=rackOfDevice(d);
   if(su===d.startU)return false;
   var parts=[];for(var u=su;u<su+d.heightU;u++)parts.push(u);
   d.startU=su;commit();toast(dn(d)+' moved to U'+(parts.length>1?parts[0]+'–'+parts[parts.length-1]:parts[0])+'.');return true}
+function cordStyle(){try{return localStorage.getItem('closetMapperCords')==='1'}catch(e){return false}}
 function renderRack(){
   var m=el('main');
   if(!S.racks.length){m.innerHTML='<h2>Rack view</h2><p class="muted">No racks yet. Add one in the Map tab.</p>';return}
@@ -1677,6 +1678,13 @@ function renderRack(){
     for(i=0;i<spans.length;i++)if(spans[i].c===c){s=spans[i];break}
     var lx=laneX(s.lane),col=cableColor(c),st=Math.min(a.step||4,b.step||4),lw=Math.max(1.4,Math.min(2.6,st-1.3)),cw=Math.min(5,lw+2.2);
     var dp=roundPath([[a.x,edge(a)],[a.x,a.ry],[a.xr,a.ry],[lx,a.ry],[lx,b.ry],[b.xr,b.ry],[b.x,b.ry],[b.x,edge(b)]],9);
+    if(cordStyle()){   // straight from jack to jack, hanging out to the right like a real patch cord (same as the Optimizer)
+      var mx=Math.max(a.x,b.x)+Math.min(60,18+Math.abs(a.y-b.y)*0.12);dp='M'+a.x+' '+a.y+' C'+mx+' '+a.y+' '+mx+' '+b.y+' '+b.x+' '+b.y;
+      cabg+='<g class="cb cord" data-c="'+c.id+'" data-a="'+c.a+'" data-b="'+c.b+'">'+
+        '<path d="'+dp+'" stroke="#000" stroke-opacity=".5" stroke-width="4.5" fill="none"/>'+
+        '<path class="vis" d="'+dp+'" stroke="'+col+'" stroke-width="2.2" fill="none"/>'+
+        '<path d="'+dp+'" stroke="transparent" stroke-width="10" fill="none"/>'+
+        '<title>'+esc(cn(c)+(c.notes?' — '+c.notes:''))+'</title></g>';return}
     cabg+='<g class="cb" data-c="'+c.id+'" data-a="'+c.a+'" data-b="'+c.b+'">'+
       '<path d="'+dp+'" stroke="#000" stroke-opacity=".45" stroke-width="'+cw+'" fill="none" stroke-linejoin="round"/>'+
       '<path class="vis" d="'+dp+'" stroke="'+col+'" stroke-width="'+lw+'" fill="none" stroke-linejoin="round"/>'+
@@ -1742,7 +1750,7 @@ function renderRack(){
   m.innerHTML='<div class="row noprint"><b>Rack:</b><select id="rsel" title="Which rack to show">'+selRack+'</select>'+
    '<button id="zo">−</button><span id="zl" style="min-width:44px;text-align:center"></span><button id="zi">+</button>'+
    '<button id="zf">Fit height</button><button id="zw">Fit width</button><button id="z1">100%</button>'+
-   '<label title="Draw switches and patch panels like the real hardware"><input type="checkbox" id="rreal"'+(ui.real!==false?' checked':'')+'> Real faceplates</label><label><input type="checkbox" id="rlab"'+(showL?' checked':'')+'> Show labels</label><button id="radd" class="pri">+ Device</button>'+photoBtn('rack',r.id)+'<button data-qr="rack:'+r.id+'" title="QR code that opens this rack">QR</button></div>'+
+   '<label title="Draw switches and patch panels like the real hardware"><input type="checkbox" id="rreal"'+(ui.real!==false?' checked':'')+'> Real faceplates</label><label><input type="checkbox" id="rlab"'+(showL?' checked':'')+'> Show labels</label><label title="How cables between devices in this rack are drawn">Cables <select id="rcord"><option value="runs"'+(cordStyle()?'':' selected')+'>Tidy runs</option><option value="cords"'+(cordStyle()?' selected':'')+'>Patch cords (like Optimizer)</option></select></label><button id="radd" class="pri">+ Device</button>'+photoBtn('rack',r.id)+'<button data-qr="rack:'+r.id+'" title="QR code that opens this rack">QR</button></div>'+
    '<div id="rinfo" class="card" style="margin:6px 0;padding:6px 10px;min-height:52px"><span class="muted">'+(COARSE?'<b>Tap a port</b> for its menu — choose Connect, then tap the other port. Tap a cable to edit it, a device to open it, an empty slot to add one. <b>Press and hold</b> a device to drag it to another U, or hold a port and drag to another port. Pinch to zoom.':'Hover a port or cable to highlight it and name both ends. Click a port to label or connect it, a cable to edit it, a device to open it. Ctrl + scroll to zoom.<br><b>Drag a device up or down</b> to move it to another U slot. <b>Drag from one port to another</b> to connect them. Click it to open it.')+'</span></div>'+
    '<div id="rwrap"><svg class="rack-svg" id="rsvg" style="width:'+(totalW*zoomW)+'px;height:'+(totalH*zoomW)+'px" viewBox="0 0 '+totalW+' '+totalH+'">'+frame+faces+cabg+portg+'<text id="slottext" style="display:none"></text></svg></div>';
   var wrap=el('rwrap'),svg=el('rsvg');
@@ -1781,6 +1789,7 @@ function renderRack(){
   el('zw').onclick=function(){setZ(fitW())};
   el('z1').onclick=function(){setZ(1)};
   el('rlab').onchange=function(){ui.showL=el('rlab').checked;render()};
+  el('rcord').onchange=function(){try{localStorage.setItem('closetMapperCords',el('rcord').value==='cords'?'1':'0')}catch(e){}render()};
   bindPhotoBtns(m);
   el('rreal').onchange=function(){ui.real=el('rreal').checked;try{localStorage.setItem('closetMapperReal',ui.real?'1':'0')}catch(e){}render()};
   el('radd').onclick=function(){addDevice(r.id)};
