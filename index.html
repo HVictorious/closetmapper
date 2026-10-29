@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><title>Closet Mapper</title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0c1218">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Closets"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" type="image/png" href="favicon-32.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script>try{var t=localStorage.getItem("closetMapperTheme");if(t==="light")document.documentElement.setAttribute("data-theme","light")}catch(e){}</script>
@@ -320,6 +323,30 @@ body{touch-action:manipulation}
   #gs{display:none}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.who{display:inline-flex;align-items:center;gap:3px;margin-left:8px;font-size:11px;font-weight:600;padding:1px 7px;border-radius:9px;vertical-align:1px;white-space:nowrap}
+.who.lk{color:#fff;background:#b91c1c}.who.mine{color:var(--muted);background:var(--raise);border:1px solid var(--line)}
+.lockban{display:flex;gap:10px;align-items:flex-start;margin:0 0 10px;padding:10px 12px;border-radius:6px;background:rgba(220,38,38,.12);border:1px solid rgba(220,38,38,.45);color:var(--text);font-size:14px}
+.lockban .ld{flex:none;width:10px;height:10px;border-radius:50%;background:#ef4444;margin-top:5px;box-shadow:0 0 0 3px rgba(239,68,68,.25)}
+.lockban.mine{background:var(--raise);border-color:var(--line)}.lockban.mine .ld{background:var(--ok);box-shadow:none}
+.lockban.off{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.45)}.lockban.off .ld{background:var(--warn);box-shadow:none}
+.scanbox{position:relative;width:min(520px,80vw);aspect-ratio:4/3;background:#000;border-radius:8px;overflow:hidden}.scanbox video{width:100%;height:100%;object-fit:cover}
+.scanframe{position:absolute;inset:18%;border:3px solid var(--accent);border-radius:10px;box-shadow:0 0 0 999px rgba(0,0,0,.35)}
+@media (max-width:700px){#bScan .bl{display:none}}
+@media print{body.qrprint>*:not(#qrov){display:none!important}body.qrprint #qrov{position:static;background:none}body.qrprint #qrov .dlg{box-shadow:none;border:none;background:#fff;color:#000}body.qrprint .noprint{display:none!important}body.qrprint #qrsolo .muted{color:#333}}
+#netwrap{overflow:auto;background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:14px;max-height:calc(100vh - 230px)}
+#netsvg .nb{fill:var(--panel);stroke:var(--line2);stroke-width:1.2}#netsvg .nn{cursor:pointer}#netsvg .nn:hover .nb{stroke:var(--accent)}
+#netsvg .nn.core .nb{stroke:var(--accent);stroke-width:2.2}#netsvg .nn.cur .nb{fill:var(--raise)}
+#netsvg .nt{fill:var(--text);font:600 14px var(--sans)}#netsvg .ns{fill:var(--muted);font:12px var(--sans)}#netsvg .nbad{fill:#fff;font:700 11px var(--sans);text-anchor:middle}
+#netsvg .nlt{fill:var(--muted);font:11px var(--mono);paint-order:stroke;stroke:var(--sunk);stroke-width:4px}#netsvg .nlh{fill:var(--faint);font:600 12px var(--sans);text-transform:uppercase;letter-spacing:.06em}
+.nlg{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}.nlg i{width:12px;height:12px;border-radius:3px;display:inline-block}
+@media print{#netwrap{max-height:none;overflow:visible;border:none;background:#fff}#netsvg .nb{fill:#fff;stroke:#333}#netsvg .nt{fill:#000}#netsvg .ns,#netsvg .nlt{fill:#333;stroke:#fff}}
+.tabn{display:inline-block;min-width:18px;padding:0 5px;margin-left:4px;border-radius:9px;background:#dc2626;color:#fff;font-size:11px;font-weight:700;line-height:17px;text-align:center}
+.isb{display:inline-block;min-width:16px;padding:0 4px;margin-left:6px;border-radius:8px;background:#dc2626;color:#fff;font-size:10px;font-weight:700;line-height:15px;text-align:center;vertical-align:1px}
+.isd{flex:none;width:10px;height:10px;border-radius:50%;background:#ef4444;margin-top:5px}.issue.done{opacity:.65}.issue.done .isd{background:var(--ok)}
+.isstrip{border-left:3px solid #ef4444}
+.port.iss{box-shadow:inset 0 0 0 2px #ef4444}.port.iss::after{content:"";position:absolute;top:3px;right:3px;width:8px;height:8px;border-radius:50%;background:#ef4444}.port{position:relative}
+.port.flash{animation:pflash 1.4s ease-out 2}@keyframes pflash{0%{outline:3px solid var(--accent);outline-offset:2px}100%{outline:3px solid transparent;outline-offset:8px}}
+textarea{width:100%;box-sizing:border-box;font:inherit;background:var(--sunk);color:var(--text);border:1px solid var(--line2);border-radius:6px;padding:8px}
 </style></head><body>
 <div id="shell">
 <aside id="side" aria-label="Sites, closets and racks"></aside>
@@ -329,13 +356,13 @@ body{touch-action:manipulation}
   <button id="bSide" class="ib" title="Show / hide the sidebar ( [ )" aria-label="Toggle sidebar">☰</button>
   <nav id="crumbs" aria-label="Where you are"></nav>
   <div id="gs"><input id="gsq" type="search" placeholder="Search ports, rooms, devices  /" autocomplete="off" aria-label="Search everything"><div id="gsr"></div></div>
-  <button id="bUndo" class="ib" title="Undo (Ctrl+Z)" disabled>↶</button><button id="bRedo" class="ib" title="Redo (Ctrl+Y)" disabled>↷</button>
+  <button id="bScan" class="ib" title="Scan a QR sticker with the camera" aria-label="Scan a QR code"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3M7 12h10"/></svg><span class="bl"> Scan</span></button><button id="bUndo" class="ib" title="Undo (Ctrl+Z)" disabled>↶</button><button id="bRedo" class="ib" title="Redo (Ctrl+Y)" disabled>↷</button>
   <button id="bFile" class="ib" title="Export or import a JSON backup">File ▾</button>
   <button id="bTheme" class="ib" title="Switch light / dark"></button>
   <button id="bExp" style="display:none">Export JSON</button><button id="bImp" style="display:none">Import JSON</button>
   <input type="file" id="file" accept=".json" style="display:none">
  </div>
- <div id="tabs" role="tablist"><button id="bMap">Map</button><button id="bRack">Rack view</button><button id="bLab">Labels</button><button id="bSug">Suggestions</button><button id="bPrt">Print labels</button><button id="bOpt" title="Plan a closet from scratch without changing Rack view">Optimizer</button><span class="tabsep"></span><button id="bRoom" title="Find everything that serves a room, across every closet">Rooms</button><button id="bFloor" title="Pin rooms on floor plans">Floor plans</button><button id="bCap" title="Free ports, jacks, strands and rack space in every closet">Capacity</button></div>
+ <div id="tabs" role="tablist"><button id="bMap">Map</button><button id="bRack">Rack view</button><button id="bLab">Labels</button><button id="bSug">Suggestions</button><button id="bPrt">Print labels</button><button id="bOpt" title="Plan a closet from scratch without changing Rack view">Optimizer</button><span class="tabsep"></span><button id="bRoom" title="Find everything that serves a room, across every closet">Rooms</button><button id="bFloor" title="Pin rooms on floor plans">Floor plans</button><button id="bCap" title="Free ports, jacks, strands and rack space in every closet">Capacity</button><button id="bNet" title="Every closet and the fiber and cable links between them">Network</button><button id="bIss" title="Problems reported on ports, devices and closets">Issues</button></div>
 </div>
 <main id="main"></main>
 </div>
@@ -373,7 +400,7 @@ function kindRow(k){for(var i=0;i<DEVICE_KINDS.length;i++)if(DEVICE_KINDS[i][0]=
 function kindOpts(){return DEVICE_KINDS.map(function(k){return [k[0],k[1]]})}
 function portsTxt(d){return d.portCount?d.portCount+(d.kind==='pdu'||d.kind==='ups'?' outlets':' ports'):(d.kind==='pdu'||d.kind==='ups'?'no outlets':'no ports')}
 function deviceColor(d){return d.color||DEV_FALLBACK[d.kind]||'#2563eb'}
-var APP_VERSION='3.4.0'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
+var APP_VERSION='4.0.0'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
 
 var Q='"'; // double-quote char used when building the cable rows on the Labels tab
 function siteFold(){var c={};(S.sites||[]).forEach(function(st,i){if(i>0)c[st.id]=true});return c}
@@ -409,6 +436,7 @@ function undo(){if(!undoS.length){toast('Nothing to undo.');return}redoS.push(sn
 function redo(){if(!redoS.length){toast('Nothing to redo.');return}undoS.push(snapOf());restoreSnap(redoS.pop(),'Redo');toast('Redone')}
 function save(){
   if(viewOnly()){var hh=S.history;try{S=JSON.parse(lastSnap)}catch(e){}S.history=hh;toast('You have view-only access to this team’s map.',1);return}
+  if(!lockGuard())return;
   try{syncCableColors();trackUndo();S.savedAt=new Date().toISOString();localStorage.setItem(KEY,JSON.stringify(S))}
   catch(e){alert('Could not save — browser storage may be full or blocked.')}
   if(cloudOn()&&CS.team){if(lastSnap!==save._last){save._last=lastSnap;cloudChanged()}}else scheduleFileWrite()}
@@ -980,6 +1008,7 @@ function portMenu(pid,cx,cy){var p=byId(S.ports,pid);if(!p)return;closeCtx();var
   items.push(['Trace path…',function(){showTrace(pid)}]);
   var tk=trunkOf(pid);if(tk)items.push(['Remove fiber strand',function(){S.cables=S.cables.filter(function(x){return x!==tk});commit()}]);
   items.push(['Edit port (label, colour)…',function(){editPort(pid)}]);
+  items.push([(ISX[pid]?'Report another problem…':'Report a problem…'),function(){issueBox('port',pid)}]);
   var dv=deviceOfPort(p);items.push(['Paste labels onto '+dn(dv)+'…',function(){pasteLabels(dv.id)}]);
   if(dv&&dv.kind==='patch')items.push(['Auto-patch '+dn(dv)+' to its switch…',function(){autoPatch(dv.id)}]);
   var m=document.createElement('div');m.className='menu';
@@ -1229,6 +1258,8 @@ function portCode(p){if(!p||!p.color)return null;
 function inkFor(hex){var m=/^#?([0-9a-f]{6})$/i.exec(hex||'');if(!m)return '#fff';var n=parseInt(m[1],16);
   return (0.299*(n>>16)+0.587*((n>>8)&255)+0.114*(n&255))>150?'#111827':'#fff'}
 var LABEL_SIZES={
+  qr1:{name:'QR sticker (1 x 1.25 in) — racks, panels, closet doors',w:1,h:1.25,fs:7,stack:1},
+  qr2:{name:'QR tag (2 x 1 in)',w:2,h:1,fs:10},
   ptouch12:{name:'Brother P-touch 12mm tape (2.0 x 0.47 in)',w:2.0,h:0.47,fs:9},
   ptouch18:{name:'Brother P-touch 18mm tape (2.4 x 0.7 in)',w:2.4,h:0.7,fs:11},
   dymo:{name:'Dymo 30336 (2.125 x 1 in)',w:2.125,h:1,fs:11},
@@ -1248,11 +1279,13 @@ function qrSvg(text,sizeIn,plain){
   for(r=0;r<n;r++)for(c=0;c<n;c++)if(q.isDark(r,c))d+='M'+c+' '+r+'h1v1h-1z';
   if(plain)return '<rect x="-1" y="-1" width="'+(n+2)+'" height="'+(n+2)+'" fill="#fff"/><path d="'+d+'" fill="#000"/>';
   return '<svg viewBox="-1 -1 '+(n+2)+' '+(n+2)+'" style="width:'+sizeIn+'in;height:'+sizeIn+'in;flex:none" shape-rendering="crispEdges"><rect x="-1" y="-1" width="'+(n+2)+'" height="'+(n+2)+'" fill="#fff"/><path d="'+d+'" fill="#000"/></svg>'}
-function baseUrl(){return location.href.split('#')[0]}
+function baseUrl(){return /^https?:$/.test(location.protocol)?location.href.split('#')[0].split('?')[0]:'https://closetmapper.cloud/'}
 function labelItems(o){
   var out=[];
   function ok(d){return o.rack==='all'||(o.rack==='loc'?(rackOfDevice(d)||{}).locId===ui.loc:d.rackId===o.rack)}
   function where(d){var r=rackOfDevice(d);return locFull(locOfRack(r))+' / '+r.name}
+  if(o.what==='closets')S.locations.filter(function(l){return o.rack==='all'||(o.rack==='loc'?l.id===ui.loc:S.racks.some(function(r){return r.id===o.rack&&r.locId===l.id}))}).forEach(function(l){var st=siteOf(l);
+    out.push({main:l.label||l.name,sub:(st?st.name+' · ':'')+'Network closet',qr:baseUrl()+'#loc='+l.id})});
   if(o.what==='racks')S.racks.filter(function(r){return o.rack==='all'||(o.rack==='loc'?r.locId===ui.loc:r.id===o.rack)}).forEach(function(r){
     out.push({main:r.label||r.name,sub:locFull(locOfRack(r))+' · '+r.height+'U',qr:baseUrl()+'#rack='+r.id})});
   if(o.what==='devices')S.devices.filter(ok).forEach(function(d){
@@ -1260,13 +1293,13 @@ function labelItems(o){
   if(o.what==='ports')S.devices.filter(ok).forEach(function(d){portsOf(d.id).forEach(function(p){
     if(o.usedOnly&&!cableOf(p.id)&&!homerunOf(p.id)&&!powerOf(p.id))return;
     out.push({main:p.label||pn(p),sub:p.label?pn(p):'',qr:baseUrl()+'#dev='+d.id})})});
-  if(o.what==='cables')S.cables.forEach(function(c){
+  if(o.what==='cables'){S.cables.forEach(function(c){
     var a=byId(S.ports,c.a),b=byId(S.ports,c.b);if(!a||!b)return;
     if(!ok(deviceOfPort(a))&&!ok(deviceOfPort(b)))return;
     var pur=cablePurpose(c);
     out.push({main:pn(a)+' → '+pn(b),back:pn(b)+' → '+pn(a),sub:(c.label||'')+(pur?(c.label?' · ':'')+pur:''),flag:true,qr:''})});
     S.homeruns.forEach(function(h){var q=byId(S.ports,h.port);if(!q||!ok(deviceOfPort(q)))return;var pur=cablePurpose(h);
-      out.push({main:(h.label||'Homerun')+' → '+pn(q),back:pn(q)+' ← '+(h.label||'Homerun'),sub:'Homerun'+(pur?' · '+pur:''),flag:true,qr:''})});
+      out.push({main:(h.label||'Homerun')+' → '+pn(q),back:pn(q)+' ← '+(h.label||'Homerun'),sub:'Homerun'+(pur?' · '+pur:''),flag:true,qr:''})})}
   return out}
 
 function renderLabels(){
@@ -1354,6 +1387,7 @@ function renderPrint(){
     return '<option value="'+esc(x[0])+'"'+(x[0]===v?' selected':'')+'>'+esc(x[1])+'</option>'}).join('')+'</select>'}
   var items=labelItems(o),all=[];
   items.forEach(function(it){for(var i=0;i<Math.max(1,o.copies);i++)all.push(it)});
+  if(sz.stack&&o.what==='cables')o.what='racks';if(sz.stack)o.qr=true;
   var wantQR=o.qr&&o.what!=='cables';
   var sample=S.devices[0],sp=sample?portsOf(sample.id)[0]:null;
   var qs=Math.min(sz.h-0.08,0.9);
@@ -1365,6 +1399,8 @@ function renderPrint(){
         '<div style="font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(it.back)+'</div></div>'
       :'<div style="flex:1;min-width:0;overflow:hidden"><div style="font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(it.main)+'</div>'+
         (it.sub&&sz.h>=0.6?'<div style="font-size:.78em;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(it.sub)+'</div>':'')+'</div>';
+    if(sz.stack)return '<div class="lbl" style="width:'+sz.w+'in;height:'+sz.h+'in;font-size:'+sz.fs+'pt;flex-direction:column;justify-content:center;text-align:center;gap:.03in;padding:.04in">'+
+      (qrLib&&it.qr?qrSvg(it.qr,sz.w-0.16):'')+'<div style="font-weight:700;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(it.main)+'</div>'+(it.sub?'<div style="font-size:.85em;color:#333;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(it.sub)+'</div>':'')+'</div>';
     return '<div class="lbl" style="width:'+sz.w+'in;height:'+sz.h+'in;font-size:'+sz.fs+'pt">'+
       (wantQR&&qrLib&&it.qr?qrSvg(it.qr,qs):'')+body+'</div>'}
   var layout=sz.sheet?'display:grid;grid-template-columns:repeat('+sz.sheet.cols+','+sz.w+'in);column-gap:'+sz.sheet.gx+'in;row-gap:'+sz.sheet.gy+'in;padding:'+sz.sheet.mt+'in 0 0 '+sz.sheet.ml+'in'
@@ -1377,14 +1413,14 @@ function renderPrint(){
    '<div class="row"><label><input type="checkbox" id="tAuto"'+(setting('autoLabel')?' checked':'')+'> Auto-label each new device with these templates</label></div>'+
    '<div class="row">Apply to '+sel('tScope',rackOpts,'all')+'<button id="tFill">Fill blank labels</button><button id="tOver" class="dng">Overwrite all labels</button></div></div>'+
    '<div class="card"><b>Label sheet</b>'+
-   '<div class="row">What '+sel('lW',[['ports','Port labels'],['cables','Cable flags (both ends)'],['devices','Device labels'],['racks','Rack labels']],o.what)+
+   '<div class="row">What '+sel('lW',[['ports','Port labels'],['cables','Cable flags (both ends)'],['devices','Device labels'],['racks','Rack labels'],['closets','Closet door signs']],o.what)+
    ' Rack '+sel('lR',rackOpts,o.rack)+' Size '+sel('lS',Object.keys(LABEL_SIZES).map(function(k){return [k,LABEL_SIZES[k].name]}),o.size)+'</div>'+
    '<div class="row">'+(o.what!=='cables'?'<label><input type="checkbox" id="lQ"'+(o.qr?' checked':'')+'> Add QR codes that open this item in the app</label>':'')+
    (o.what==='ports'?'<label><input type="checkbox" id="lU"'+(o.usedOnly?' checked':'')+'> Only ports with cables</label>':'')+
    ' Copies <input id="lC" type="number" min="1" max="10" value="'+o.copies+'" style="width:56px">'+
    '<button class="pri" id="lP">Print '+all.length+' label'+(all.length===1?'':'s')+'</button>'+
    '<button id="lCSV">Export for label software (CSV)</button></div>'+
-   (o.qr&&o.what!=='cables'?(qrLoading?'<p class="muted">Loading QR codes…</p>':(ui.qrFail?'<p class="muted">QR codes need internet the first time. Labels will print without them.</p>':(qrLib?'<p class="muted">QR codes point at this file. A phone can follow them only if the app is served from a web address.</p>':''))):'')+
+   (o.qr&&o.what!=='cables'?(qrLoading?'<p class="muted">Loading QR codes…</p>':(ui.qrFail?'<p class="muted">QR codes need internet the first time. Labels will print without them.</p>':(qrLib?'<p class="muted">Each QR code opens that item in Closet Mapper — scan it with the iPad camera or the <b>Scan</b> button at the top of the app. Use the <b>QR sticker</b> size for rack and panel stickers.</p>':''))):'')+
    '<p class="muted">In the print dialog set margins to "None" and scale to 100% so the sizes come out exact.</p></div></div>'+
    '<div id="sheet" style="'+layout+'">'+(all.map(lab).join('')||'<p class="muted noprint">Nothing to print with these settings.</p>')+'</div>';
   m.innerHTML=h;
@@ -1400,7 +1436,7 @@ function renderPrint(){
   function upd(k,v){o[k]=v;render()}
   el('lW').onchange=function(){upd('what',el('lW').value)};
   el('lR').onchange=function(){upd('rack',el('lR').value)};
-  el('lS').onchange=function(){upd('size',el('lS').value)};
+  el('lS').onchange=function(){var v=el('lS').value;if(LABEL_SIZES[v].stack){o.qr=true;if(o.what==='ports'||o.what==='cables')o.what='racks'}upd('size',v)};
   if(el('lQ'))el('lQ').onchange=function(){upd('qr',el('lQ').checked)};
   if(el('lU'))el('lU').onchange=function(){upd('usedOnly',el('lU').checked)};
   el('lC').onchange=function(){upd('copies',Math.min(10,Math.max(1,parseInt(el('lC').value,10)||1)))};
@@ -1604,7 +1640,8 @@ function renderRack(){
         (two&&(p.label||'').trim()?(row===0?rotLabel(cx,cy-psz/2-2,y+2,cell,p.label,labCol):rotLabel(cx,y+h-2,cy+psz/2+2,cell,p.label,labCol,true)):
         p.label&&showL&&rows===1?rotLabel(cx,cy-psz/2-2,y+1,cell,p.label,labCol):p.label&&showL&&labelTxt?'<text x="'+cx+'" y="'+labelY+'" font-size="'+labelFs+'" fill="#fff" text-anchor="middle" pointer-events="none">'+
           esc(labelTxt).split('\n').map(function(ln,li){return '<tspan x="'+cx+'" dy="'+(li?labelFs+1:0)+'">'+ln+'</tspan>'}).join('')+'</text>':'')+
-        '<title>'+esc(pn(p)+(p.label?' — '+p.label:''))+'</title></g>'})});
+        (ISX[p.id]?'<circle class="isdot" cx="'+(cx+psz/2-1)+'" cy="'+(cy-psz/2+1)+'" r="'+Math.max(3.5,psz/4)+'" fill="#ef4444" stroke="#fff" stroke-width="1.2" pointer-events="none"/>':'')+
+        '<title>'+esc(pn(p)+(p.label?' — '+p.label:'')+(ISX[p.id]?' — '+ISX[p.id]+' open issue'+(ISX[p.id]===1?'':'s'):''))+'</title></g>'})});
   // PDU feed (input) port: small "IN" box at the lower left of a PDU, wired to a UPS or another PDU outlet
   devs.filter(function(d){return d.kind==='pdu'}).forEach(function(d){var g=geo[d.id];if(!g)return;
     var fed=S.power.filter(function(w){return w.dev===d.id}).length;
@@ -1705,7 +1742,7 @@ function renderRack(){
   m.innerHTML='<div class="row noprint"><b>Rack:</b><select id="rsel" title="Which rack to show">'+selRack+'</select>'+
    '<button id="zo">−</button><span id="zl" style="min-width:44px;text-align:center"></span><button id="zi">+</button>'+
    '<button id="zf">Fit height</button><button id="zw">Fit width</button><button id="z1">100%</button>'+
-   '<label title="Draw switches and patch panels like the real hardware"><input type="checkbox" id="rreal"'+(ui.real!==false?' checked':'')+'> Real faceplates</label><label><input type="checkbox" id="rlab"'+(showL?' checked':'')+'> Show labels</label><button id="radd" class="pri">+ Device</button>'+photoBtn('rack',r.id)+'</div>'+
+   '<label title="Draw switches and patch panels like the real hardware"><input type="checkbox" id="rreal"'+(ui.real!==false?' checked':'')+'> Real faceplates</label><label><input type="checkbox" id="rlab"'+(showL?' checked':'')+'> Show labels</label><button id="radd" class="pri">+ Device</button>'+photoBtn('rack',r.id)+'<button data-qr="rack:'+r.id+'" title="QR code that opens this rack">QR</button></div>'+
    '<div id="rinfo" class="card" style="margin:6px 0;padding:6px 10px;min-height:52px"><span class="muted">'+(COARSE?'<b>Tap a port</b> for its menu — choose Connect, then tap the other port. Tap a cable to edit it, a device to open it, an empty slot to add one. <b>Press and hold</b> a device to drag it to another U, or hold a port and drag to another port. Pinch to zoom.':'Hover a port or cable to highlight it and name both ends. Click a port to label or connect it, a cable to edit it, a device to open it. Ctrl + scroll to zoom.<br><b>Drag a device up or down</b> to move it to another U slot. <b>Drag from one port to another</b> to connect them. Click it to open it.')+'</span></div>'+
    '<div id="rwrap"><svg class="rack-svg" id="rsvg" style="width:'+(totalW*zoomW)+'px;height:'+(totalH*zoomW)+'px" viewBox="0 0 '+totalW+' '+totalH+'">'+frame+faces+cabg+portg+'<text id="slottext" style="display:none"></text></svg></div>';
   var wrap=el('rwrap'),svg=el('rsvg');
@@ -1862,12 +1899,12 @@ function renderDevice(){
   var h='<div class="row"><button id="back">← Back</button><h2 style="margin:0">'+esc(dn(d))+'</h2>'+
     '<span class="muted">'+kN(d.kind)+' · '+esc(r.name)+' · U'+d.startU+(d.heightU>1?'–'+(d.startU+d.heightU-1):'')+(d.portCount?' · '+portsTxt(d):'')+'</span></div>'+
     '<div class="row"><button id="ed">Edit device</button>'+(d.kind==='patch'?'<span class="muted">Jacks:</span><select id="jk">'+JACK_OPTS.map(function(o){return '<option value="'+o[0]+'"'+((d.removable||'')===o[0]?' selected':'')+'>'+esc(o[1])+'</option>'}).join('')+'</select>':'')+'<button id="bulk" class="pri">Bulk label ports</button><button id="bpaste">Paste labels…</button>'+(d.kind==='patch'?'<button id="bauto">Auto-patch to switch…</button>':'')+(d.kind==='switch'?'<button id="bhr">Bulk homeruns…</button>':'')+(d.kind==='fiber'?'<button id="bfib" class="pri">Connect strands to another closet…</button>':'')+
-    '<button id="plab">Print these port labels</button><button class="dng" id="del">Delete device</button></div>'+
-    '<p class="muted">Click a port to label it, colour-code it or connect a cable. A green outline means a cable is connected.</p><div class="ports">';
+    '<button id="plab">Print these port labels</button><button data-qr="dev:'+d.id+'" title="QR code that opens this device">QR code</button><button id="dIss">Report a problem</button><button class="dng" id="del">Delete device</button></div>'+
+    '<p class="muted">Click a port to label it, colour-code it or connect a cable. A green outline means a cable is connected.</p>'+issueStrip('dev',d.id)+'<div class="ports">';
   ports.forEach(function(p){
     var c=cableOf(p.id)||homerunOf(p.id)||powerOf(p.id),hr=homerunOf(p.id),pw=powerOf(p.id),o=cableOf(p.id)?byId(S.ports,cableOf(p.id).a===p.id?cableOf(p.id).b:cableOf(p.id).a):null;
     var pcc=p.color||'',pk=portCode(p);
-    h+='<div class="port'+(c||trunkOf(p.id)?' used':'')+'" data-p="'+p.id+'"'+(pcc?' title="'+esc(pk[1]+' — '+pk[2])+'" style="background:'+pcc+';color:'+inkFor(pcc)+'"':'')+'><b>'+p.num+'</b>'+esc(p.label||'')+
+    h+='<div class="port'+(c||trunkOf(p.id)?' used':'')+(ISX[p.id]?' iss':'')+(ui.flashPort===p.id?' flash':'')+'" data-p="'+p.id+'"'+(pcc?' title="'+esc(pk[1]+' — '+pk[2])+'" style="background:'+pcc+';color:'+inkFor(pcc)+'"':'')+'><b>'+p.num+'</b>'+esc(p.label||'')+
       '<div class="muted" style="font-size:10px'+(pcc?';color:inherit;opacity:.85':'')+'">'+(o?'→ '+esc(pn(o)):hr?'⇣ '+esc(hr.label||'homerun'):pw?'⚡ '+esc(dn(byId(S.devices,pw.dev)||{name:'?'})):'')+(function(){var tk=trunkOf(p.id),t2=tk&&byId(S.ports,tk.a===p.id?tk.b:tk.a);return t2?'<div style="font-size:10px;color:var(--accent)">⇄ '+esc(pn(t2))+'</div>':''})()+'</div></div>'});
   h+='</div>'+deviceDetails(d);
   var cs=S.cables.filter(function(c){return byId(S.ports,c.a).devId===d.id||byId(S.ports,c.b).devId===d.id});
@@ -1885,7 +1922,8 @@ function renderDevice(){
   else h+='<p class="muted">No power connections yet.</p>';
   h+='</div>';
   m.innerHTML=h;
-  el('back').onclick=function(){ui.view=ui.back==='rack'?'rack':'map';ui.back=null;render()};
+  el('back').onclick=function(){ui.view=ui.back==='rack'?'rack':ui.back==='issues'?'issues':'map';ui.back=null;render()};
+  if(ui.flashPort){var fp=m.querySelector('.port[data-p="'+ui.flashPort+'"]');ui.flashPort=null;if(fp)setTimeout(function(){fp.scrollIntoView({block:'center'})},50)}
   el('ed').onclick=function(){editDevice(d)};
   if(el('jk'))el('jk').onchange=function(){d.removable=el('jk').value;commit();toast(d.removable==='yes'?'Jacks marked removable.':d.removable==='no'?'Jacks marked fixed.':'Jack type cleared.')};
   el('bulk').onclick=function(){bulkLabel(d.id)};
@@ -1896,6 +1934,7 @@ function renderDevice(){
   if(el('addfeed'))el('addfeed').onclick=function(){addFeed(d.id)};
   m.querySelectorAll('[data-pw]').forEach(function(a){a.onclick=function(ev){ev.preventDefault();editPower(byId(S.power,a.getAttribute('data-pw')))}});
   el('del').onclick=function(){delDevice(d.id)};
+  el('dIss').onclick=function(){issueBox('dev',d.id)};
   el('plab').onclick=function(){ui.lp.what='ports';ui.lp.rack=d.rackId;ui.view='print';render()};
   m.querySelectorAll('.port').forEach(function(e){
     e.onclick=function(){editPort(e.getAttribute('data-p'))}})}
@@ -1926,8 +1965,8 @@ function renderMap(){
   var racks=S.racks.filter(function(r){return r.locId===l.id});
   var h='<div class="row"><h2 style="margin:0">'+(siteOf(l)?'<span class="muted" style="font-size:14px;font-weight:400">'+esc(siteOf(l).name)+' › </span>':'')+esc(l.name)+'</h2><span class="muted">'+esc(l.label||'')+'</span>'+
     '<button id="addR" class="pri">+ Add rack</button><button id="renL">Rename</button>'+
-    '<button id="bulkC">Bulk connect…</button><button id="impD">Paste device list…</button>'+photoBtn('loc',l.id)+
-    '<button class="dng" id="delL">Delete location</button></div>';
+    '<button id="bulkC">Bulk connect…</button><button id="impD">Paste device list…</button>'+photoBtn('loc',l.id)+'<button data-qr="loc:'+l.id+'" title="QR code for the closet door">QR</button><button id="locIss">Report a problem</button>'+
+    '<button class="dng" id="delL">Delete location</button></div>'+issueStrip('loc',l.id);
   h+='<div class="racks">';
   racks.forEach(function(r){
     var devs=S.devices.filter(function(d){return d.rackId===r.id});
@@ -1950,7 +1989,7 @@ function renderMap(){
   el('addR').onclick=addRack;
   el('renL').onclick=function(){renameLocation(l)};
   el('delL').onclick=function(){delLocation(l.id)};
-  el('bulkC').onclick=bulkCable;
+  el('bulkC').onclick=bulkCable;if(el('locIss'))el('locIss').onclick=function(){issueBox('loc',l.id)};
   el('impD').onclick=importDevices;bindPhotoBtns(m);
   m.querySelectorAll('.slot').forEach(function(b){b.onclick=function(){var rid=b.getAttribute('data-r'),u=parseInt(b.getAttribute('data-u'),10);if(placePicked(rid,u))return;addDevice(rid,null,u)}});
   m.querySelectorAll('[data-add]').forEach(function(b){b.onclick=function(){addDevice(b.getAttribute('data-add'))}});
@@ -1969,7 +2008,7 @@ function renderSide(){
     '<div class="sideSec"><div class="sideHead">Closets<span class="sp"></span><button id="addS" title="Add a site (a building that groups closets)">+ Site</button><button id="addL" class="pri" title="Add a closet">+ Closet</button></div>';
   if(!S.locations.length&&!S.sites.length)h+='<p class="muted" style="font-size:13px;margin:4px">Add your first closet to start mapping. Sites group closets by building.</p>';
   function racksOf(l){return S.racks.filter(function(r){return r.locId===l.id})}
-  function locRow(l,inSite){var rs=racksOf(l),open=l.id===ui.loc,o='<div class="loc'+(inSite?' in':'')+(open?' sel':'')+'" draggable="true" data-l="'+l.id+'"><span><span class="grip">⠿</span> '+esc(l.label||l.name)+'</span>'+
+  function locRow(l,inSite){var rs=racksOf(l),open=l.id===ui.loc,o='<div class="loc'+(inSite?' in':'')+(open?' sel':'')+'" draggable="true" data-l="'+l.id+'"><span><span class="grip">⠿</span> '+esc(l.label||l.name)+whoChip(l.id)+(openIssuesIn(l.id)?'<span class="isb" title="'+openIssuesIn(l.id)+' open issue'+(openIssuesIn(l.id)===1?'':'s')+'">'+openIssuesIn(l.id)+'</span>':'')+'</span>'+
     '<span><span class="mv" data-mv="'+l.id+'" data-d="-1" title="Move up">▲</span><span class="mv" data-mv="'+l.id+'" data-d="1" title="Move down">▼</span><span class="x" data-del="'+l.id+'" title="Delete">✕</span> <span class="n">'+rs.length+'</span></span></div>';
     if(open)rs.forEach(function(r){o+='<div class="rk'+(inSite?' in':'')+(r.id===ui.rack&&ui.view==='rack'?' sel':'')+'" data-r="'+r.id+'"><span>'+esc(r.label||r.name)+'</span><span class="u">'+r.height+'U</span></div>'});
     return o}
@@ -2003,7 +2042,7 @@ function renderSide(){
   if(innerWidth<900)side.querySelectorAll('.loc,.rk').forEach(function(e){e.addEventListener('click',function(ev){if(!ev.target.closest('.x,.mv'))setTimeout(function(){setSide(true)},0)})});
   el('fT').onclick=function(){ui.foldT=!(ui.foldT!=null?ui.foldT:ui.view==='rack');renderSide()};
   el('fC').onclick=function(){ui.foldC=!ui.foldC;renderSide()};
-  side.querySelectorAll('.rk').forEach(function(e){e.onclick=function(){var r=byId(S.racks,e.getAttribute('data-r'));ui.loc=r.locId;ui.rack=r.id;ui.zoom=null;ui.dev=null;ui.view='rack';render()}});
+  side.querySelectorAll('.rk').forEach(function(e){e.onclick=function(){var r=byId(S.racks,e.getAttribute('data-r'));ui.entered=true;ui.loc=r.locId;ui.rack=r.id;ui.zoom=null;ui.dev=null;ui.view='rack';render()}});
   // ordering: drag and drop, or the little arrows
   function clearOver(){side.querySelectorAll('.over').forEach(function(x){x.classList.remove('over')})}
   function accept(e,types){e.ondragover=function(ev){var d=window.__ld;if(!d||types.indexOf(d.t)<0)return;ev.preventDefault();clearOver();e.classList.add('over')};
@@ -2025,7 +2064,7 @@ function renderSide(){
   side.querySelectorAll('.loc').forEach(function(e){
     e.onclick=function(ev){
       if(ev.target.className==='x')return;
-      ui.loc=e.getAttribute('data-l');ui.rack=null;ui.zoom=null;ui.dev=null;
+      ui.loc=e.getAttribute('data-l');ui.rack=null;ui.zoom=null;ui.dev=null;ui.entered=true;
       ui.plan='';
       if(['rack','print','labels','sug'].indexOf(ui.view)<0)ui.view='map';
       render()}});
@@ -2614,7 +2653,7 @@ function renderSuggest(){
 
 function render(){
   try{
-    applyPalette();markTrunks();
+    applyPalette();markTrunks();issueIndex();
     var v=ui.view;if(el('main'))el('main').onpointerdown=null;
     if(v==='rack'&&!S.racks.length)v='map';
     if(v==='device'&&!byId(S.devices,ui.dev))v='map';
@@ -2624,7 +2663,7 @@ function render(){
     btn=el('bLab');if(btn)btn.className=v==='labels'?'on':'';
     btn=el('bPrt');if(btn)btn.className=v==='print'?'on':'';
     btn=el('bSug');if(btn)btn.className=v==='sug'?'on':'';
-    btn=el('bRoom');if(btn)btn.className=v==='rooms'?'on':'';btn=el('bCap');if(btn)btn.className=v==='cap'?'on':'';btn=el('bOpt');if(btn)btn.className=v==='opt'?'on':'';btn=el('bFloor');if(btn)btn.className=v==='floor'?'on':'';
+    btn=el('bRoom');if(btn)btn.className=v==='rooms'?'on':'';btn=el('bCap');if(btn)btn.className=v==='cap'?'on':'';btn=el('bOpt');if(btn)btn.className=v==='opt'?'on':'';btn=el('bFloor');if(btn)btn.className=v==='floor'?'on':'';btn=el('bNet');if(btn)btn.className=v==='net'?'on':'';btn=el('bIss');if(btn){btn.className=v==='issues'?'on':'';var on=(S.issues||[]).filter(function(i){return i.status==='open'}).length;btn.innerHTML='Issues'+(on?' <span class="tabn">'+on+'</span>':'')}
     if(v==='rack')renderRack();
     else if(v==='device')renderDevice();
     else if(v==='labels')renderLabels();
@@ -2634,8 +2673,10 @@ function render(){
     else if(v==='cap')renderCapacity();
     else if(v==='opt')renderOptimizer();
     else if(v==='floor')renderFloor();
+    else if(v==='net')renderNet();
+    else if(v==='issues')renderIssues();
     else renderMap();
-    renderSide();drawCrumbs(v);
+    renderSide();drawCrumbs(v);try{prAfterRender()}catch(e){}
     // same screen as before (an edit, not a navigation): put the scroll position back
     var k=viewKey(v);lastViewKey=k;
     if(k===prevKey)putScroll(snap);
@@ -2652,6 +2693,8 @@ el('bSug').onclick=function(){ui.view='sug';ui.plan='';ui.wo=null;render()};
 el('bPrt').onclick=function(){ui.view='print';render()};
 el('bRoom').onclick=function(){ui.view='rooms';ui.rqFocused=0;ui.room=null;render()};
 el('bCap').onclick=function(){ui.view='cap';render()};
+el('bNet').onclick=function(){ui.view='net';render()};
+el('bIss').onclick=function(){ui.view='issues';render()};
 el('bOpt').onclick=function(){ui.view='opt';render()};
 el('bFloor').onclick=function(){ui.view='floor';ui.fpPlace=null;ui.fpSel=null;render()};
 el('bExp').onclick=function(){dl('closet-backup-'+stampName()+'.json',exportText(),'application/json')};
@@ -2674,17 +2717,77 @@ el('file').onchange=function(e){
   rd.readAsText(f);e.target.value=''};
 
 function openFromHash(){
-  var m=location.hash.match(/^#(dev|rack)=(\w+)/);if(!m)return;
-  var o=byId(m[1]==='dev'?S.devices:S.racks,m[2]);if(!o)return;
-  if(m[1]==='dev'){ui.rack=o.rackId;ui.loc=rackOfDevice(o).locId;ui.dev=o.id;ui.back='rack';ui.view='device'}
-  else {ui.rack=o.id;ui.loc=o.locId;ui.zoom=null;ui.view='rack'}}
+  var m=location.hash.match(/^#(dev|rack|loc)=(\w+)/);if(!m)return false;
+  var o=byId(m[1]==='dev'?S.devices:m[1]==='rack'?S.racks:S.locations,m[2]);if(!o){if(S.locations.length)toast('That QR code is for something that is not in this map'+(cloudOn()&&CS.teams&&CS.teams.length>1?' — it may belong to another team.':'.'),1);return false}
+  if(m[1]==='dev'){var rk=rackOfDevice(o);ui.rack=o.rackId;ui.loc=rk?rk.locId:ui.loc;ui.dev=o.id;ui.back='rack';ui.view='device'}
+  else if(m[1]==='rack'){ui.rack=o.id;ui.loc=o.locId;ui.zoom=null;ui.view='rack'}
+  else {ui.loc=o.id;ui.rack=null;ui.dev=null;ui.view='map'}
+  ui.entered=true;try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}return true}
 window.addEventListener('hashchange',function(){openFromHash();render()});
+// ================= QR codes: show one, print one, scan one =================
+var JSQR_URL='https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js',QRGEN_URL='https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js';
+function qrTarget(kind,id){var o=kind==='dev'?byId(S.devices,id):kind==='rack'?byId(S.racks,id):byId(S.locations,id);if(!o)return null;
+  if(kind==='dev'){var r=rackOfDevice(o),l=r&&locOfRack(r);return {o:o,main:dn(o),sub:(l?locFull(l)+' / ':'')+(r?r.name:'')+' · U'+o.startU,url:baseUrl()+'#dev='+id}}
+  if(kind==='rack'){var l2=locOfRack(o);return {o:o,main:o.label||o.name,sub:(l2?locFull(l2):'')+' · '+o.height+'U',url:baseUrl()+'#rack='+id}}
+  var st=siteOf(o);return {o:o,main:o.label||o.name,sub:(st?st.name+' · ':'')+'Network closet',url:baseUrl()+'#loc='+id}}
+function qrShow(kind,id){var t=qrTarget(kind,id);if(!t)return;
+  if(!qrLib){if(ui.qrFail&&!navigator.onLine)return toast('QR codes need a connection the first time.',1);return loadQR(function(){if(qrLib)qrShow(kind,id);else toast('Could not load the QR code maker. Check the connection.',1)})}
+  var o=ovl('qrov','<div id="qrsolo" style="text-align:center"><div style="background:#fff;display:inline-block;padding:10px;border-radius:6px">'+qrSvg(t.url,2.2)+'</div>'+
+    '<h2 style="margin:10px 0 2px">'+esc(t.main)+'</h2><div class="muted">'+esc(t.sub)+'</div></div>'+
+    '<p class="muted noprint" style="font-size:12px;text-align:center;word-break:break-all">'+esc(t.url)+'</p>'+
+    '<div class="row noprint" style="justify-content:center"><button class="pri" id="qrP">Print this sticker</button><button id="qrMore">Print stickers for the whole closet…</button><button id="qrX">Close</button></div>',62);
+  el('qrX').onclick=function(){closeOvl('qrov')};o.onclick=function(e){if(e.target===o)closeOvl('qrov')};
+  el('qrP').onclick=function(){document.body.classList.add('qrprint');window.print();setTimeout(function(){document.body.classList.remove('qrprint')},500)};
+  el('qrMore').onclick=function(){closeOvl('qrov');var lid=kind==='loc'?id:kind==='rack'?t.o.locId:(rackOfDevice(t.o)||{}).locId;if(lid)ui.loc=lid;
+    Object.assign(ui.lp,{what:kind==='dev'?'devices':kind==='loc'?'closets':'racks',rack:'loc',size:'qr1',qr:true});ui.view='print';render()}}
+document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-qr]');if(!b)return;var k=b.getAttribute('data-qr').split(':');qrShow(k[0],k[1])});
+// scanning: the camera, with the browser's own QR reader when it has one, otherwise jsQR
+var scan={on:false,stream:null,det:null};
+function loadJsQR(cb){if(window.jsQR)return cb(true);var x=document.createElement('script');x.src=JSQR_URL;x.onload=function(){cb(!!window.jsQR)};x.onerror=function(){cb(false)};document.head.appendChild(x)}
+function scanOpen(){if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return toast('This browser can’t use the camera. Scan the sticker with the iPad Camera app instead — it opens the same page.',1);
+  var o=ovl('scanov','<h2 style="margin:0 0 8px">Scan a QR sticker</h2><div class="scanbox"><video id="scV" playsinline muted autoplay></video><div class="scanframe"></div></div>'+
+    '<p class="muted" id="scMsg" style="margin:8px 0">Point the camera at a rack, panel or closet sticker.</p><div class="row"><button id="scX">Cancel</button></div>',66);
+  el('scX').onclick=scanClose;
+  var start=function(){navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false}).then(function(st){if(!el('scanov')){st.getTracks().forEach(function(t){t.stop()});return}
+    scan.stream=st;scan.on=true;var v=el('scV');v.srcObject=st;v.play().catch(function(){});scanLoop()}).catch(function(e){var m=el('scMsg');if(m)m.textContent=/denied|NotAllowed/i.test(String(e&&e.name||e))?'Camera access was blocked. Allow the camera for this site in Settings, or use the iPad Camera app.':'Could not start the camera: '+(e&&e.message||e)})};
+  if('BarcodeDetector' in window){try{scan.det=new BarcodeDetector({formats:['qr_code']})}catch(e){scan.det=null}}
+  if(scan.det)start();else loadJsQR(function(ok){if(!ok){var m=el('scMsg');if(m)m.textContent='The QR reader needs a connection the first time. Use the iPad Camera app for now.';return}start()})}
+function scanClose(){scan.on=false;if(scan.stream)scan.stream.getTracks().forEach(function(t){t.stop()});scan.stream=null;closeOvl('scanov')}
+function scanLoop(){if(!scan.on)return;var v=el('scV');if(!v||v.readyState<2)return setTimeout(scanLoop,150);
+  var done=function(txt){if(!scan.on)return;if(txt){scanHit(txt);return}setTimeout(scanLoop,120)};
+  if(scan.det){scan.det.detect(v).then(function(r){done(r&&r[0]&&r[0].rawValue)}).catch(function(){done(null)});return}
+  var w=v.videoWidth,h=v.videoHeight,k=Math.min(1,640/Math.max(w,h));var c=scan.cv||(scan.cv=document.createElement('canvas'));c.width=Math.round(w*k);c.height=Math.round(h*k);
+  var x=c.getContext('2d',{willReadFrequently:true});x.drawImage(v,0,0,c.width,c.height);var d=x.getImageData(0,0,c.width,c.height),r=window.jsQR(d.data,c.width,c.height,{inversionAttempts:'dontInvert'});done(r&&r.data)}
+function scanHit(txt){var m=String(txt).match(/#(dev|rack|loc)=(\w+)/);
+  if(!m){var mm=el('scMsg');if(mm)mm.textContent='That QR code isn’t a Closet Mapper sticker.';setTimeout(scanLoop,900);return}
+  scanClose();try{history.replaceState(null,'',location.pathname+location.search+'#'+m[1]+'='+m[2])}catch(e){}if(openFromHash())render()}
+el('bScan').onclick=scanOpen;
+// keep the QR libraries on the device so stickers can be scanned and printed in a closet with no signal
+window.addEventListener('load',function(){if(navigator.onLine&&'serviceWorker' in navigator&&/^https?:$/.test(location.protocol))setTimeout(function(){[JSQR_URL,QRGEN_URL].forEach(function(u){fetch(u,{mode:'no-cors'}).catch(function(){})})},6000)});
 // ================= ACCOUNTS & CLOUD SYNC (Supabase) =================
 // Fill these two in from Supabase ▸ Project Settings ▸ API. While they are empty the app runs in the old local/JSON mode.
 var CLOUD=window.CLOSETMAPPER_CLOUD||{url:'https://irjxxhkcnuzzzkyyqnuz.supabase.co',key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlyanh4aGtjbnV6enpreXlxbnV6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI5MDE5NzksImV4cCI6MjEwODQ3Nzk3OX0.V3x0k8I0rSYXEkxBCz5Zaq79jpjNKnjANR1YBiLrFRk'};  // public anon key — safe in the browser, data is protected by row level security
 var SB=null,CS={user:null,team:null,teams:[],role:null,version:0,gen:0,pushedGen:0,saving:false,timer:null,chan:null,status:'off',retry:null,loaded:false};
 function cloudOn(){return !!(CLOUD.url&&CLOUD.key&&window.supabase&&window.supabase.createClient)}
 function viewOnly(){return cloudOn()&&CS.team&&CS.role==='viewer'}
+// ---- working offline: the last copy of the team's map lives on this device, with a note of unsynced edits
+function ofSet(k,v){try{if(v==null)localStorage.removeItem(k);else localStorage.setItem(k,v)}catch(e){}}
+function ofGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function rememberUser(u){ofSet('cmUser',JSON.stringify({id:u.id,email:u.email,user_metadata:u.user_metadata||{}}))}
+function netDown(e){var m=String(e&&e.message||e||'');return navigator.onLine===false||/fetch|network|Load failed|offline|timeout/i.test(m)}
+// open the team from this device's copy (no connection)
+function openCached(t){var tid=t.id;if(ofGet('cmDocTeam')!==tid)return false;var j=null;try{j=JSON.parse(ofGet(KEY))}catch(e){}if(!j)return false;
+  CS.team=t;CS.role=t.role;S=normDoc(j);CS.base=ofGet('cmBase:'+tid)||JSON.stringify(cleanDoc(S));CS.version=parseInt(ofGet('cmVer:'+tid)||'0',10)||0;CS.loaded=true;
+  var dirty=ofGet('cmDirty:'+tid)==='1';CS.gen=dirty?1:0;CS.pushedGen=0;
+  trackUndo.quiet=1;lastSnap=snapOf();save._last=lastSnap;trackUndo.quiet=0;undoS=[];redoS=[];drawUndo();applyPalette();
+  if(!ui.loc||!byId(S.locations,ui.loc)){ui.loc=S.locations.length?S.locations[0].id:null;ui.rack=null;ui.dev=null;ui.view='map';ui.collapsed=siteFold()}
+  cloudStatus('offline');openFromHash();render();toast('No connection — working from the copy on this device. Changes sync when you are back online.');return true}
+function offlineBoot(){var u=null,ts=[];try{u=JSON.parse(ofGet('cmUser'));ts=JSON.parse(ofGet('cmTeams'))||[]}catch(e){}
+  if(!u||!ts.length)return false;CS.user=u;CS.teams=ts;CS.offlineBoot=true;var last=ofGet('cmTeam'),t=ts.filter(function(x){return x.id===last})[0]||ts[0];
+  return openCached(t)}
+// back online after starting offline: check the sign-in and sync
+function reconnect(){if(!SB||!CS.offlineBoot)return;SB.auth.getSession().then(function(r){var s=r.data&&r.data.session;if(!s){if(navigator.onLine!==false)authBox('in','You were offline. Sign in again to sync the changes made on this device.');return}
+  CS.offlineBoot=false;CS.user=s.user;rememberUser(s.user);openTeam(CS.team)}).catch(function(){})}
 function cloudBoot(){
   var qe=new URLSearchParams((location.hash||'').replace(/^#/,'')+'&'+location.search.replace(/^\?/,''));if(qe.get('error_description')){setTimeout(function(){authBox('in');var e=el('aErr');if(e)e.textContent=qe.get('error_description').replace(/\+/g,' ')},300);history.replaceState(null,'',location.pathname)}
   SB=window.supabase.createClient(CLOUD.url,CLOUD.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
@@ -2692,8 +2795,9 @@ function cloudBoot(){
     if(ev==='PASSWORD_RECOVERY')newPasswordBox();
     else if(ev==='SIGNED_IN'&&sess&&!CS.user)afterLogin(sess.user);
     else if(ev==='SIGNED_OUT'){CS.user=null;authBox()}});
-  SB.auth.getSession().then(function(r){var s=r.data&&r.data.session;if(s)afterLogin(s.user);else authBox()}).catch(function(){authBox()});
-  window.addEventListener('online',function(){if(CS.team&&CS.gen!==CS.pushedGen)cloudPush()});
+  SB.auth.getSession().then(function(r){var s=r.data&&r.data.session;if(s)afterLogin(s.user);else if(navigator.onLine===false&&offlineBoot()){}else authBox()}).catch(function(){if(!offlineBoot())authBox()});
+  window.addEventListener('online',function(){if(CS.offlineBoot)return reconnect();if(CS.team&&CS.loaded){prStart(CS.team.id);if(CS.gen!==CS.pushedGen)cloudPush();else cloudStatus('saved')}else if(CS.team)openTeam(CS.team)});
+  window.addEventListener('offline',function(){if(CS.team){cloudStatus('offline');PR.on=false;drawLockBanner();renderSide()}});
   drawBackup()}
 function ovl(id,html,z){var o=el(id);if(!o){o=document.createElement('div');o.id=id;o.className='ovl';o.style.zIndex=z||58;document.body.appendChild(o)}o.innerHTML='<div class="dlg">'+html+'</div>';return o}
 function closeOvl(id){var o=el(id);if(o)o.remove()}
@@ -2704,7 +2808,7 @@ function authBox(mode,msg){mode=mode||ui.authMode||'in';ui.authMode=mode;closeOv
     (msg?'<div class="card" style="margin:10px 0;border-left:3px solid var(--ok)">'+msg+'</div>':'')+
     '<button type="button" id="aMs" class="msbtn" style="display:none"><svg width="18" height="18" viewBox="0 0 21 21" aria-hidden="true"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>Sign in with Microsoft</button>'+
     '<div class="orline" id="aOr" style="display:none"><span>or use your email</span></div>'+
-    '<form id="authF"><label>Email<input id="aE" type="email" autocomplete="email" required></label>'+
+    '<form id="authF">'+(mode==='up'?'<label>Your name<input id="aN" autocomplete="name" required maxlength="60" placeholder="First and last name"></label>':'')+'<label>Email<input id="aE" type="email" autocomplete="email" required></label>'+
     (mode!=='link'?'<label>Password<input id="aP" type="password" autocomplete="'+(mode==='up'?'new-password':'current-password')+'" minlength="8" required></label>':'')+
     '<div id="aErr" style="color:var(--bad);font-size:13px;min-height:18px;margin-top:6px"></div>'+
     '<button class="pri" type="submit" style="width:100%;padding:10px">'+(mode==='up'?'Create account':mode==='link'?'Email me a sign-in link':'Sign in')+'</button></form>'+
@@ -2721,26 +2825,26 @@ function authBox(mode,msg){mode=mode||ui.authMode||'in';ui.authMode=mode;closeOv
   if(el('aForgot'))el('aForgot').onclick=function(e){e.preventDefault();var em=el('aE').value.trim();if(!em){el('aErr').textContent='Type your email first, then click Forgot password.';return}
     SB.auth.resetPasswordForEmail(em,{redirectTo:location.origin+location.pathname}).then(function(r){if(r.error)el('aErr').textContent=r.error.message;else authBox('in','We emailed a link to reset your password. Open it on this device.')})};
   el('authF').onsubmit=function(e){e.preventDefault();var em=el('aE').value.trim(),pw=el('aP')?el('aP').value:'',btn=e.target.querySelector('button[type=submit]');btn.disabled=true;el('aErr').textContent='';
-    var p=mode==='up'?SB.auth.signUp({email:em,password:pw,options:{emailRedirectTo:location.origin+location.pathname}}):mode==='link'?SB.auth.signInWithOtp({email:em,options:{emailRedirectTo:location.origin+location.pathname}}):SB.auth.signInWithPassword({email:em,password:pw});
+    var p=mode==='up'?SB.auth.signUp({email:em,password:pw,options:{emailRedirectTo:location.origin+location.pathname,data:{name:(el('aN')?el('aN').value.trim():'')}}}):mode==='link'?SB.auth.signInWithOtp({email:em,options:{emailRedirectTo:location.origin+location.pathname}}):SB.auth.signInWithPassword({email:em,password:pw});
     p.then(function(r){btn.disabled=false;if(r.error){el('aErr').textContent=r.error.message;return}
       if(mode==='link')authBox('link','Check your email for the sign-in link. You can close this tab after clicking it.');
       else if(mode==='up'&&!r.data.session)authBox('in','Account created. Check your email and click the link to confirm it, then sign in.');
       else if(r.data.session)afterLogin(r.data.session.user)}).catch(function(err){btn.disabled=false;el('aErr').textContent=String(err.message||err)})};
-  setTimeout(function(){var f=el('aE');if(f)f.focus()},0)}
+  setTimeout(function(){var f=el('aN')||el('aE');if(f)f.focus()},0)}
 var msOn=null;
 function msEnabled(){if(msOn!==null)return Promise.resolve(msOn);
   return fetch(CLOUD.url+'/auth/v1/settings',{headers:{apikey:CLOUD.key}}).then(function(r){return r.json()}).then(function(j){msOn=!!(j&&j.external&&j.external.azure);return msOn}).catch(function(){return false})}
 function newPasswordBox(){var o=ovl('pwov','<h2 style="margin-top:0">Choose a new password</h2><form id="npF"><label>New password<input id="npP" type="password" minlength="8" required autocomplete="new-password"></label><div id="npE" style="color:var(--bad);font-size:13px;min-height:18px"></div><button class="pri" type="submit" style="width:100%">Save password</button></form>',62);
   el('npF').onsubmit=function(e){e.preventDefault();SB.auth.updateUser({password:el('npP').value}).then(function(r){if(r.error){el('npE').textContent=r.error.message;return}closeOvl('pwov');toast('Password changed.')})}}
 function signOut(){if(CS.gen!==CS.pushedGen&&!confirm('Some changes have not reached the server yet. Sign out anyway?'))return;
-  cloudStopLive();CS.team=null;CS.teams=[];CS.loaded=false;SB.auth.signOut().then(function(){try{localStorage.removeItem(KEY)}catch(e){}location.reload()})}
+  cloudStopLive();CS.team=null;CS.teams=[];CS.loaded=false;SB.auth.signOut().then(function(){try{['cmUser','cmTeams','cmDocTeam',KEY].forEach(function(k){localStorage.removeItem(k)})}catch(e){}location.reload()})}
 // ---- after sign-in: join invited teams, pick a team, load its map
-function afterLogin(user){CS.user=user;closeOvl('authov');history.replaceState(null,'',location.pathname+location.search.replace(/[?&]code=[^&]*/,''));
+function afterLogin(user){CS.user=user;CS.offlineBoot=false;rememberUser(user);closeOvl('authov');setTimeout(function(){if(!myName())nameBox();else pushMyName()},400);history.replaceState(null,'',location.pathname+location.search.replace(/[?&]code=[^&]*/,''));
   SB.rpc('accept_invites').then(function(r){if(r.data>0)toast('You joined '+r.data+' team'+(r.data===1?'':'s')+' you were invited to.')}).catch(function(){}).then(loadTeams).then(function(ts){
     if(!ts.length)return firstTeamBox();var last=null;try{last=localStorage.getItem('cmTeam')}catch(e){}
-    openTeam(ts.filter(function(t){return t.id===last})[0]||ts[0])}).catch(function(e){cloudErr(e)})}
+    openTeam(ts.filter(function(t){return t.id===last})[0]||ts[0])}).catch(function(e){if(netDown(e)&&offlineBoot())return;cloudErr(e)})}
 function loadTeams(){return SB.from('members').select('role,team_id,teams(id,name)').eq('user_id',CS.user.id).then(function(r){if(r.error)throw r.error;
-  CS.teams=(r.data||[]).filter(function(m){return m.teams}).map(function(m){return {id:m.team_id,name:m.teams.name,role:m.role}}).sort(function(a,b){return natCmp(a.name,b.name)});return CS.teams})}
+  CS.teams=(r.data||[]).filter(function(m){return m.teams}).map(function(m){return {id:m.team_id,name:m.teams.name,role:m.role}}).sort(function(a,b){return natCmp(a.name,b.name)});ofSet('cmTeams',JSON.stringify(CS.teams));return CS.teams})}
 function firstTeamBox(){var local=S.locations.length||S.devices.length,em=(CS.user.email||'').split('@')[0];
   var o=ovl('teamov','<h2 style="margin-top:0">Set up your team</h2><p>Your map belongs to a team, so coworkers you invite can work on the same closets. You can rename it later.</p>'+
     '<label>Team name<input id="tnN" value="'+esc(em?em+'’s team':'My team')+'"></label>'+
@@ -2762,39 +2866,43 @@ function firstTeamBox(){var local=S.locations.length||S.devices.length,em=(CS.us
 function cleanDoc(j){var o=Object.assign({},j);delete o.photoData;delete o.lock;delete o.exportedAt;return o}
 function uploadAllPhotos(j){var pd=j&&j.photoData;if(!pd)return Promise.resolve();var ids=Object.keys(pd);
   return ids.reduce(function(pr,id){return pr.then(function(){PHC[id]=pd[id];phPut(id,pd[id]);return photoUpload(id,pd[id],CS.team.id).catch(function(){})})},Promise.resolve())}
-function normDoc(j){j=j||{};['locations','racks','devices','ports','cables','homeruns','sites','power'].forEach(function(k){if(!Array.isArray(j[k]))j[k]=[]});if(!j.settings||typeof j.settings!=='object')j.settings={};delete j.photoData;delete j.lock;delete j.exportedAt;return j}
-function openTeam(t){CS.team=t;CS.role=t.role;try{localStorage.setItem('cmTeam',t.id)}catch(e){}
+function normDoc(j){j=j||{};['locations','racks','devices','ports','cables','homeruns','sites','power','issues'].forEach(function(k){if(!Array.isArray(j[k]))j[k]=[]});if(!j.settings||typeof j.settings!=='object')j.settings={};delete j.photoData;delete j.lock;delete j.exportedAt;return j}
+function openTeam(t){var prevTeam=CS.loaded&&CS.team?CS.team.id:null;CS.team=t;CS.role=t.role;try{localStorage.setItem('cmTeam',t.id)}catch(e){}
   cloudStatus('loading');
-  return SB.from('maps').select('data,version').eq('team_id',t.id).single().then(function(r){if(r.error)throw r.error;applyRemote(r.data.data,r.data.version,false);cloudLive(t.id);
-    if(CS.role==='viewer')toast('You have view-only access to '+t.name+'.')}).catch(function(e){cloudErr(e)})}
+  var mine=null,base=null;if(ofGet('cmDirty:'+t.id)==='1'&&ofGet('cmDocTeam')===t.id){try{mine=cleanDoc(JSON.parse(ofGet(KEY)));base=JSON.parse(ofGet('cmBase:'+t.id)||'{}')}catch(e){mine=null}}
+  var keep=prevTeam===t.id;
+  return SB.from('maps').select('data,version').eq('team_id',t.id).single().then(function(r){if(r.error)throw r.error;applyRemote(r.data.data,r.data.version,keep);cloudLive(t.id);prStart(t.id);
+    if(mine){var h=S.history;S=normDoc(merge3(base,mine,normDoc(r.data.data)));if(!S.history)S.history=h;trackUndo.quiet=1;save();toast('Synced the changes made on this device while offline.')}
+    if(CS.role==='viewer')toast('You have view-only access to '+t.name+'.')}).catch(function(e){if(netDown(e)&&openCached(t))return;cloudErr(e)})}
 function applyRemote(d,v,keepUi){var prev={loc:ui.loc,rack:ui.rack,dev:ui.dev,view:ui.view};S=normDoc(d);CS.base=JSON.stringify(cleanDoc(S));CS.version=v;CS.gen=0;CS.pushedGen=0;CS.loaded=true;
   trackUndo.quiet=1;lastSnap=snapOf();save._last=lastSnap;trackUndo.quiet=0;if(!keepUi){undoS=[];redoS=[]}drawUndo();applyPalette();
   if(keepUi&&prev.loc&&byId(S.locations,prev.loc)){ui.loc=prev.loc;ui.rack=prev.rack&&byId(S.racks,prev.rack)?prev.rack:null;ui.dev=prev.dev&&byId(S.devices,prev.dev)?prev.dev:null;if(ui.view==='device'&&!ui.dev)ui.view='map'}
-  else{ui.loc=S.locations.length?S.locations[0].id:null;ui.rack=null;ui.dev=null;ui.view='map';ui.collapsed=siteFold()}
+  else{ui.loc=S.locations.length?S.locations[0].id:null;ui.rack=null;ui.dev=null;ui.view='map';ui.collapsed=siteFold();ui.entered=false;PR.lastLoc=undefined}
   try{localStorage.setItem(KEY,JSON.stringify(S));localStorage.setItem('cmVer:'+CS.team.id,String(v))}catch(e){}
-  cloudStatus('saved');render()}
+  ofSet('cmDocTeam',CS.team.id);ofSet('cmBase:'+CS.team.id,CS.base);ofSet('cmDirty:'+CS.team.id,null);
+  cloudStatus('saved');if(!keepUi)openFromHash();render()}
 // ---- saving: whole document, only if nobody saved in between (version check)
-function cloudChanged(){CS.gen++;clearTimeout(CS.timer);CS.timer=setTimeout(cloudPush,1200);cloudStatus('pending')}
+function cloudChanged(){CS.gen++;if(CS.team){ofSet('cmDirty:'+CS.team.id,'1');ofSet('cmDocTeam',CS.team.id)}clearTimeout(CS.timer);CS.timer=setTimeout(cloudPush,1200);cloudStatus('pending')}
 function cloudPush(){if(!CS.team||!CS.loaded)return;if(CS.saving){clearTimeout(CS.timer);CS.timer=setTimeout(cloudPush,800);return}
   if(CS.gen===CS.pushedGen){cloudStatus('saved');return}
   var g=CS.gen,doc=cleanDoc(S);CS.saving=true;cloudStatus('saving');
   SB.rpc('save_map',{t:CS.team.id,d:doc,expected:CS.version}).then(function(r){CS.saving=false;
     if(r.error)throw r.error;
     if(r.data===-1)return cloudMerge();
-    CS.version=r.data;CS.pushedGen=g;CS.base=JSON.stringify(doc);CS.merges=0;try{localStorage.setItem('cmVer:'+CS.team.id,String(r.data))}catch(e){}
-    if(CS.gen!==g)cloudPush();else cloudStatus('saved')}).catch(function(e){CS.saving=false;cloudStatus(navigator.onLine===false?'offline':'error',String(e.message||e));
+    CS.version=r.data;CS.pushedGen=g;CS.base=JSON.stringify(doc);CS.merges=0;try{localStorage.setItem('cmVer:'+CS.team.id,String(r.data))}catch(e){}ofSet('cmBase:'+CS.team.id,CS.base);if(CS.gen===g)ofSet('cmDirty:'+CS.team.id,null);
+    if(CS.gen!==g)cloudPush();else cloudStatus('saved')}).catch(function(e){CS.saving=false;cloudStatus(netDown(e)?'offline':'error',String(e.message||e));
       clearTimeout(CS.retry);CS.retry=setTimeout(cloudPush,15000)})}
 // someone saved first: fold their changes into yours and save again (the dialog is only a last resort)
 function cloudMerge(){CS.merges=(CS.merges||0)+1;if(CS.merges>3)return cloudConflict();cloudStatus('saving');
   SB.from('maps').select('data,version').eq('team_id',CS.team.id).single().then(function(r){if(r.error||!r.data)throw r.error||new Error('no map');
     var base=null;try{base=JSON.parse(CS.base||'{}')}catch(e){base={}}
     var merged=normDoc(merge3(base,cleanDoc(S),normDoc(r.data.data)));var h=S.history;S=merged;if(!S.history)S.history=h;
-    CS.base=JSON.stringify(cleanDoc(normDoc(r.data.data)));CS.version=r.data.version;
+    CS.base=JSON.stringify(cleanDoc(normDoc(r.data.data)));CS.version=r.data.version;ofSet('cmBase:'+CS.team.id,CS.base);
     trackUndo.quiet=1;lastSnap=snapOf();save._last=lastSnap;trackUndo.quiet=0;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
     render();toast('Merged your changes with a teammate’s.');cloudPush()}).catch(function(e){cloudErr(e)})}
 function cloudConflict(){cloudStatus('conflict');
-  SB.from('map_heads').select('updated_by_email,updated_at,version').eq('team_id',CS.team.id).single().then(function(r){var h=r.data||{};
-    var o=ovl('confov','<h2 style="margin-top:0">Someone else saved this map</h2><p><b>'+esc(h.updated_by_email||'A teammate')+'</b> saved changes '+(h.updated_at?esc(fmtTime(h.updated_at)):'just now')+' while you were editing.</p>'+
+  SB.from('map_heads').select('*').eq('team_id',CS.team.id).single().then(function(r){var h=r.data||{};
+    var o=ovl('confov','<h2 style="margin-top:0">Someone else saved this map</h2><p><b>'+esc(nameOr(h.updated_by_name,h.updated_by_email))+'</b> saved changes '+(h.updated_at?esc(fmtTime(h.updated_at)):'just now')+' while you were editing.</p>'+
       '<div class="row" style="flex-direction:column;align-items:stretch"><button class="pri" id="cfTheirs">Load their version <span style="font-weight:400">(your unsaved changes are dropped)</span></button><button id="cfMine">Keep my version <span class="muted">(replaces their changes)</span></button><button id="cfBoth">Download my version as JSON first</button></div>',63);
     el('cfTheirs').onclick=function(){closeOvl('confov');openTeam(CS.team)};
     el('cfMine').onclick=function(){closeOvl('confov');CS.version=h.version||CS.version;cloudPush()};
@@ -2822,32 +2930,35 @@ function mergeById(b,m,t){var B={},M={},T={},res=[],done={};b.forEach(function(x
 function cloudLive(tid){cloudStopLive();
   CS.chan=SB.channel('head-'+tid).on('postgres_changes',{event:'*',schema:'public',table:'map_heads',filter:'team_id=eq.'+tid},function(p){var n=p.new||{};
     if(!n.version||n.version<=CS.version||n.updated_by===CS.user.id)return;
-    if(CS.gen===CS.pushedGen&&!CS.saving){SB.from('maps').select('data,version').eq('team_id',tid).single().then(function(r){if(r.error||!r.data)return;applyRemote(r.data.data,r.data.version,true);toast('Updated by '+(n.updated_by_email||'a teammate'))})}
+    if(CS.gen===CS.pushedGen&&!CS.saving){SB.from('maps').select('data,version').eq('team_id',tid).single().then(function(r){if(r.error||!r.data)return;applyRemote(r.data.data,r.data.version,true);toast('Updated by '+nameOr(n.updated_by_name,n.updated_by_email))})}
     else cloudStatus('behind')}).subscribe()}
-function cloudStopLive(){if(CS.chan){try{SB.removeChannel(CS.chan)}catch(e){}CS.chan=null}}
-function cloudErr(e){cloudStatus('error',String(e&&e.message||e));toast('Could not reach your account: '+String(e&&e.message||e),1)}
+function cloudStopLive(){prStop();if(CS.chan){try{SB.removeChannel(CS.chan)}catch(e){}CS.chan=null}}
+function cloudErr(e){if(netDown(e)){cloudStatus('offline');return}cloudStatus('error',String(e&&e.message||e));toast('Could not reach your account: '+String(e&&e.message||e),1)}
 function cloudStatus(s,detail){CS.status=s;CS.detail=detail||'';drawBackup()}
 function drawCloud(b){var st=CS.status,t=CS.team,led={saved:'on',pending:'warn',saving:'warn',loading:'warn',behind:'warn',offline:'bad',error:'bad',conflict:'bad'}[st]||'',
-    txt={saved:'Saved',pending:'Unsaved changes…',saving:'Saving…',loading:'Loading…',behind:'A teammate saved — yours saves next',offline:'Offline — changes are kept here and sync when you are back',error:'Not saved — retrying',conflict:'Needs your choice',off:''}[st]||'';
+    txt={saved:'Saved',pending:'Unsaved changes…',saving:'Saving…',loading:'Loading…',behind:'A teammate saved — yours saves next',offline:'Offline — changes are kept on this device and sync when you are back',error:'Not saved — retrying',conflict:'Needs your choice',off:''}[st]||'';
   if(!CS.user){b.innerHTML='<div><span class="led warn"></span>Not signed in</div>';return}
   b.innerHTML=(t?'<div class="acct"><button class="ib" id="cTeam" title="Team, members and invites"><b>'+esc(t.name)+'</b> ▾</button>'+(CS.role==='viewer'?'<span class="chip0">view only</span>':'')+'</div>':'')+
     '<div style="margin-top:4px" title="'+esc(CS.detail||'')+'"><span class="led '+led+'"></span>'+txt+'</div>'+
-    '<div class="muted" style="font-size:12px;margin-top:4px;display:flex;gap:6px;align-items:center"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(CS.user.email||'')+'</span><a href="#" id="cOut" style="color:var(--muted);margin-left:auto">Sign out</a></div>';
-  if(el('cTeam'))el('cTeam').onclick=teamBox;el('cOut').onclick=function(e){e.preventDefault();signOut()}}
+    '<div class="muted" style="font-size:12px;margin-top:4px;display:flex;gap:6px;align-items:center"><a href="#" id="cMe" title="'+esc(CS.user.email||'')+' — change your name" style="color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(meLabel())+'</a><a href="#" id="cOut" style="color:var(--muted);margin-left:auto">Sign out</a></div>';
+  if(el('cTeam'))el('cTeam').onclick=teamBox;el('cOut').onclick=function(e){e.preventDefault();signOut()};el('cMe').onclick=function(e){e.preventDefault();nameBox()}}
 // ---- team settings: members, invites, roles, switch, new team
 function teamBox(){var t=CS.team;if(!t)return;var owner=CS.role==='owner';
-  Promise.all([SB.from('members').select('user_id,email,role').eq('team_id',t.id),owner?SB.from('invites').select('id,email,role,created_at').eq('team_id',t.id):Promise.resolve({data:[]}),loadTeams()]).then(function(rs){
-    var mem=(rs[0].data||[]).sort(function(a,b){return natCmp(a.email||'',b.email||'')}),inv=rs[1].data||[];
+  Promise.all([teamMembers(t.id),owner?SB.from('invites').select('id,email,role,created_at').eq('team_id',t.id):Promise.resolve({data:[]}),loadTeams()]).then(function(rs){
+    var mem=(rs[0].data||[]).sort(function(a,b){return natCmp(nameOr(a.name,a.email),nameOr(b.name,b.email))}),inv=rs[1].data||[];
     modal('Team — '+t.name,[],null,function(){var box=el('mbox'),w=document.createElement('div');w.style.width='min(640px,88vw)';box.insertBefore(w,el('mok').parentNode);el('mok').style.display='none';el('mno').textContent='Close';
       var roleSel=function(m){return '<select data-role="'+m.user_id+'"'+(owner&&m.user_id!==CS.user.id?'':' disabled')+'>'+['owner','editor','viewer'].map(function(r){return '<option'+(r===m.role?' selected':'')+'>'+r+'</option>'}).join('')+'</select>'};
       w.innerHTML=(owner?'<div class="row"><input id="tmName" value="'+esc(t.name)+'" style="flex:1"><button id="tmRen">Rename</button></div>':'<p class="muted">Your role: <b>'+esc(CS.role)+'</b></p>')+
-        '<h3>Members</h3><table><tr><th>Email</th><th>Role</th><th></th></tr>'+mem.map(function(m){return '<tr><td>'+esc(m.email||'(unknown)')+(m.user_id===CS.user.id?' <span class="muted">(you)</span>':'')+'</td><td>'+roleSel(m)+'</td><td>'+(owner&&m.user_id!==CS.user.id?'<button class="ib dng" data-rm="'+m.user_id+'">Remove</button>':'')+'</td></tr>'}).join('')+'</table>'+
+        '<h3>Members</h3><table><tr><th>Name</th><th>Email</th><th>Now</th><th>Role</th><th></th></tr>'+mem.map(function(m){var me=m.user_id===CS.user.id,on=me?[prPayload()]:PR.others.filter(function(o){return o.uid===m.user_id}),
+          where=on.length?on.map(function(o){var lc=o.loc&&byId(S.locations,o.loc);return o.idle?'away':lc?'in '+(lc.label||lc.name):'online'}).join(', '):'';
+          return '<tr><td><b>'+esc(me?meLabel():nameOr(m.name,m.email))+'</b>'+(me?' <span class="muted">(you)</span> <a href="#" id="tmMe" style="font-size:12px">change</a>':'')+'</td><td class="muted">'+esc(m.email||'(unknown)')+'</td><td>'+(where?'<span class="led on"></span>'+esc(where):'<span class="muted">—</span>')+'</td><td>'+roleSel(m)+'</td><td>'+(owner&&m.user_id!==CS.user.id?'<button class="ib dng" data-rm="'+m.user_id+'">Remove</button>':'')+'</td></tr>'}).join('')+'</table>'+
         (owner?'<h3>Invite someone</h3><div class="row"><input id="tmEm" type="email" placeholder="coworker@school.org" style="flex:1"><select id="tmRole"><option value="editor">Editor — can change the map</option><option value="viewer">Viewer — can only look</option></select><button class="pri" id="tmInv">Invite</button></div>'+
           '<p class="muted" style="font-size:12px">They sign up at <b>'+esc(location.host||'closetmapper.cloud')+'</b> with that email and join automatically.</p>'+
           (inv.length?'<table><tr><th>Waiting to sign up</th><th>Role</th><th></th></tr>'+inv.map(function(i){return '<tr><td>'+esc(i.email)+'</td><td>'+esc(i.role)+'</td><td><button class="ib" data-uninv="'+i.id+'">Cancel</button></td></tr>'}).join('')+'</table>':''):'')+
         '<h3>Your teams</h3><div class="row">'+CS.teams.map(function(x){return '<button class="chip'+(x.id===t.id?' on':'')+'" data-sw="'+x.id+'">'+esc(x.name)+' <span class="muted">'+esc(x.role)+'</span></button>'}).join('')+'<button id="tmNew">+ New team</button></div>'+
         '<div class="row" style="margin-top:14px"><button class="dng" id="tmLeave">Leave this team</button></div>';
       function reopen(){el('modal').style.display='none';teamBox()}
+      if(el('tmMe'))el('tmMe').onclick=function(e){e.preventDefault();el('modal').style.display='none';nameBox()};
       if(el('tmRen'))el('tmRen').onclick=function(){var n=el('tmName').value.trim();if(!n)return;SB.from('teams').update({name:n}).eq('id',t.id).then(function(r){if(r.error)return toast(r.error.message,1);t.name=n;drawBackup();reopen()})};
       w.querySelectorAll('[data-role]').forEach(function(s){s.onchange=function(){SB.from('members').update({role:s.value}).eq('team_id',t.id).eq('user_id',s.getAttribute('data-role')).then(function(r){if(r.error)toast(r.error.message,1);else toast('Role changed.')})}});
       w.querySelectorAll('[data-rm]').forEach(function(b){b.onclick=function(){if(!confirm('Remove this person from the team?'))return;SB.from('members').delete().eq('team_id',t.id).eq('user_id',b.getAttribute('data-rm')).then(function(r){if(r.error)toast(r.error.message,1);reopen()})}});
@@ -2859,6 +2970,93 @@ function teamBox(){var t=CS.team;if(!t)return;var owner=CS.role==='owner';
       el('tmNew').onclick=function(){var n=prompt('Name the new team');if(!n||!n.trim())return;SB.rpc('create_team',{team_name:n.trim()}).then(function(r){if(r.error)return toast(r.error.message,1);
         loadTeams().then(function(){var x=CS.teams.filter(function(y){return y.id===r.data})[0];el('modal').style.display='none';openTeam(x)})})};
       el('tmLeave').onclick=function(){if(!confirm('Leave '+t.name+'? You will lose access to its map.'))return;SB.rpc('leave_team',{t:t.id}).then(function(r){if(r.error)return toast(r.error.message,1);location.reload()})}})})}
+// ================= WHO'S WHERE: names, presence and closet locks =================
+// Everyone signed in to the team shares a live presence channel. Opening a closet puts you "in" it;
+// the first person in holds the lock, and everyone else can look but not change that closet until they leave
+// (or go idle for 10 minutes). Nothing is stored — the lock disappears the moment their app closes.
+var PR={chan:null,others:[],loc:null,since:0,idle:false,last:Date.now(),on:false,priv:true,sent:'',lastLoc:undefined},IDLE_MS=10*60*1000;
+window.__PR=PR;window.__prStop=function(){prStop()};var CLOSET_VIEWS={map:1,rack:1,device:1,labels:1,sug:1,opt:1};
+function myName(){var u=CS.user,m=u&&u.user_metadata||{};return String(m.name||m.full_name||'').trim()}
+function nameOr(name,email){return String(name||'').trim()||String(email||'').split('@')[0]||'A teammate'}
+function meLabel(){return nameOr(myName(),CS.user&&CS.user.email)}
+function firstName(n){return String(n||'').trim().split(/\s+/)[0]||n}
+function viewCloset(){if(!CLOSET_VIEWS[ui.view])return null;
+  if(ui.view==='device'){var d=byId(S.devices,ui.dev),r=d&&rackOfDevice(d);if(r)return r.locId}
+  return ui.loc&&byId(S.locations,ui.loc)?ui.loc:null}
+function myCloset(){return ui.entered?viewCloset():null}
+function prLive(){return !!(PR.chan&&PR.on)}
+function inCloset(l){var a=PR.others.filter(function(m){return m.loc===l&&!m.idle});if(PR.loc===l&&!PR.idle&&prLive())a.push({sid:SID,uid:CS.user&&CS.user.id,name:meLabel(),loc:l,since:PR.since,me:1});
+  return a.sort(function(x,y){return (x.since-y.since)||(x.sid<y.sid?-1:1)})}
+function lockHolder(l){return inCloset(l)[0]||null}
+function lockedBy(l){if(!l||!prLive())return null;var h=lockHolder(l);return h&&h.sid!==SID?h:null}
+function prPayload(){return {sid:SID,uid:CS.user&&CS.user.id,name:meLabel(),email:CS.user&&CS.user.email||'',loc:PR.loc,since:PR.since,idle:PR.idle}}
+function prSync(){var loc=myCloset();if(loc!==PR.loc){PR.loc=loc;PR.since=Date.now()}
+  if(!prLive())return;var pl=prPayload(),j=JSON.stringify(pl);if(j===PR.sent)return;PR.sent=j;try{PR.chan.track(pl)}catch(e){}}
+function prStart(tid){prStop();if(!SB||!SB.channel)return;PR.on=false;PR.sent='';
+  if(PR.priv&&SB.realtime&&SB.realtime.setAuth&&SB.auth.getSession&&!prStart.authed){prStart.authed=1;SB.auth.getSession().then(function(r){var t=r&&r.data&&r.data.session&&r.data.session.access_token;try{if(t)SB.realtime.setAuth(t)}catch(e){}prStart(tid)}).catch(function(){prStart(tid)});return}
+  var ch=SB.channel('team:'+tid,{config:{private:PR.priv,presence:{key:SID}}});
+  ch.on('presence',{event:'sync'},function(){var st=ch.presenceState()||{},o=[];
+    Object.keys(st).forEach(function(k){(st[k]||[]).forEach(function(m){if(m&&m.sid&&m.sid!==SID)o.push(m)})});PR.others=o;prChanged()});
+  ch.subscribe(function(st){if(PR.chan!==ch)return;
+    if(st==='SUBSCRIBED'){PR.on=true;PR.sent='';prSync();prChanged()}
+    else if((st==='CHANNEL_ERROR'||st==='TIMED_OUT')&&PR.priv&&!PR.on){PR.priv=false;prStart(tid)}   // presence policies not installed yet: use an open channel
+    else if(st==='CLOSED'||st==='CHANNEL_ERROR'||st==='TIMED_OUT'){PR.on=false;prChanged()}});
+  PR.chan=ch}
+function prStop(){if(PR.chan){var c=PR.chan;PR.chan=null;try{c.untrack()}catch(e){}try{SB.removeChannel(c)}catch(e){}}PR.on=false;PR.others=[];PR.sent=''}
+var prLockKey='';
+function prChanged(){var l=viewCloset(),k=JSON.stringify(l&&lockedBy(l)&&lockedBy(l).sid)+'|'+prLive();
+  if(k!==prLockKey){prLockKey=k;render()}else{renderSide();drawLockBanner()}}
+// after every render: where am I now?
+function prAfterRender(){var l=viewCloset();
+  if(PR.lastLoc!==undefined&&l&&l!==PR.lastLoc)ui.entered=true;   // you navigated into a closet
+  if(l)PR.lastLoc=l;prSync();drawLockBanner()}
+function drawLockBanner(){var old=el('lockban');if(old)old.remove();var l=viewCloset();if(!l||!cloudOn()||!CS.team)return;
+  var m=el('main');if(!m)return;var b=document.createElement('div');b.id='lockban';b.className='lockban noprint';
+  if(!prLive()){if(CS.status==='offline'||navigator.onLine===false){b.className+=' off';b.innerHTML='<span class="ld"></span><span><b>Offline.</b> Changes are kept on this device and sync when you are back online. Closet locks can’t be checked until then.</span>';m.insertBefore(b,m.firstChild)}return}
+  var h=lockedBy(l);
+  if(h){var lc=byId(S.locations,l);b.innerHTML='<span class="ld"></span><span><b>'+esc(h.name)+'</b> is working in '+esc(lc?(lc.label||lc.name):'this closet')+' right now. You can look around, but changes here are locked until they leave.'+(ui.entered&&PR.loc===l?' You’re next in line.':'')+'</span>';m.insertBefore(b,m.firstChild);return}
+  var w=inCloset(l).filter(function(x){return !x.me});
+  if(w.length&&PR.loc===l){b.className+=' mine';b.innerHTML='<span class="ld"></span><span>You have this closet. Waiting: '+w.map(function(x){return '<b>'+esc(x.name)+'</b>'}).join(', ')+'.</span>';m.insertBefore(b,m.firstChild)}}
+// which closets did this change touch? (compares the saved state with the current one)
+function closetIdx(P){var R={},D={},Pt={};(P.racks||[]).forEach(function(r){R[r.id]=r.locId});(P.devices||[]).forEach(function(d){D[d.id]=R[d.rackId]});(P.ports||[]).forEach(function(p){Pt[p.id]=D[p.devId]});return {R:R,D:D,P:Pt}}
+function itemClosets(k,x,ix){switch(k){case 'locations':return [x.id];case 'racks':return [x.locId];case 'devices':return [ix.R[x.rackId]];case 'ports':return [ix.D[x.devId]];
+  case 'cables':return [ix.P[x.a],ix.P[x.b]];case 'homeruns':return [ix.P[x.port]];case 'power':return [ix.P[x.port],ix.D[x.dev]]}return []}
+function touchedClosets(prevJ){var A;try{A=JSON.parse(prevJ)}catch(e){return []}var ia=closetIdx(A),ib=closetIdx(S),out={};
+  ['locations','racks','devices','ports','cables','homeruns','power'].forEach(function(k){var ma={},mb={};(A[k]||[]).forEach(function(x){ma[x.id]=x});(S[k]||[]).forEach(function(x){mb[x.id]=x});
+    Object.keys(ma).concat(Object.keys(mb)).forEach(function(id){var a=ma[id],b=mb[id];if(a&&b&&JSON.stringify(a)===JSON.stringify(b))return;
+      if(a)itemClosets(k,a,ia).forEach(function(l){if(l)out[l]=1});if(b)itemClosets(k,b,ib).forEach(function(l){if(l)out[l]=1})})});
+  var pa=A.plans||{},pb=S.plans||{};Object.keys(pa).concat(Object.keys(pb)).forEach(function(l){if(JSON.stringify(pa[l])!==JSON.stringify(pb[l]))out[l]=1});
+  return Object.keys(out)}
+// called by save(): refuse changes to a closet someone else holds; editing the closet you are looking at puts you in it
+function lockGuard(){if(!cloudOn()||!CS.team||lastSnap==null)return true;
+  var busy=PR.others.some(function(m){return m.loc&&!m.idle}),cur=viewCloset();if(!busy&&(ui.entered||!cur))return true;
+  var t=touchedClosets(lastSnap);
+  for(var i=0;i<t.length;i++){var h=lockedBy(t[i]);if(h){var lc=byId(S.locations,t[i])||{};
+    var hh=S.history;try{S=JSON.parse(lastSnap)}catch(e){}S.history=hh;applyPalette();
+    toast(h.name+' is working in '+(lc.label||lc.name||'that closet')+' — it is locked until they leave.',1);setTimeout(render,0);return false}}
+  if(cur&&t.indexOf(cur)>=0&&!ui.entered){ui.entered=true;setTimeout(prSync,0)}
+  return true}
+// idle: after 10 minutes without a tap or key press you let go of the closet
+['pointerdown','keydown'].forEach(function(ev){document.addEventListener(ev,function(){PR.last=Date.now();if(PR.idle){PR.idle=false;PR.since=Date.now();prSync();prChanged()}},true)});
+setInterval(function(){if(!PR.idle&&PR.loc&&Date.now()-PR.last>IDLE_MS){PR.idle=true;prSync();prChanged()}},30000);
+// presence chip for the sidebar
+function whoChip(l){if(!prLive())return '';var a=inCloset(l);if(!a.length)return '';var h=a[0],more=a.length-1;
+  if(h.me)return more?'<span class="who mine" title="You have this closet. Waiting: '+esc(a.slice(1).map(function(x){return x.name}).join(', '))+'">● you +'+more+'</span>':'';
+  more=a.filter(function(x){return !x.me}).length-1;
+  return '<span class="who lk" title="'+esc(h.name)+' is working here — locked'+(more?' (+'+more+' waiting)':'')+'">● '+esc(firstName(h.name))+(more?' +'+more:'')+'</span>'}
+// ---- your name (shown to teammates instead of your email)
+function nameBox(force){var cur=myName();
+  var o=ovl('nameov','<h2 style="margin-top:0">'+(cur?'Change your name':'What’s your name?')+'</h2><p class="muted" style="margin-top:0">Teammates see this next to the closets you are working in, on issues and in the change history.</p>'+
+    '<form id="nmF"><label>Your name<input id="nmN" value="'+esc(cur)+'" autocomplete="name" required maxlength="60" placeholder="First and last name"></label><div id="nmE" style="color:var(--bad);font-size:13px;min-height:18px"></div>'+
+    '<div class="row"><button class="pri" type="submit">Save</button>'+(cur?'<button type="button" id="nmX">Cancel</button>':'')+'</div></form>',64);
+  if(el('nmX'))el('nmX').onclick=function(){closeOvl('nameov')};
+  el('nmF').onsubmit=function(e){e.preventDefault();var n=el('nmN').value.trim().replace(/\s+/g,' ');if(!n){el('nmE').textContent='Type your name.';return}
+    SB.auth.updateUser({data:{name:n}}).then(function(r){if(r&&r.error){el('nmE').textContent=r.error.message;return}
+      CS.user.user_metadata=Object.assign({},CS.user.user_metadata||{},{name:n});closeOvl('nameov');pushMyName();drawBackup();PR.sent='';prSync();toast('Thanks, '+firstName(n)+'.')})};
+  setTimeout(function(){var f=el('nmN');if(f){f.focus();f.select()}},0)}
+function pushMyName(){var n=myName();if(n&&SB)SB.rpc('set_my_name',{n:n}).then(function(){},function(){})}
+// members of the team, with names when the database has them (older databases: email only)
+function teamMembers(tid){return SB.from('members').select('user_id,email,role,name').eq('team_id',tid).then(function(r){if(r.error)return SB.from('members').select('user_id,email,role').eq('team_id',tid);return r})}
 // ---- photos in cloud storage (cached on the device in IndexedDB)
 function dataUrlBlob(d){var p=d.split(','),b=atob(p[1]),a=new Uint8Array(b.length);for(var i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return new Blob([a],{type:(p[0].match(/:(.*?);/)||[])[1]||'image/jpeg'})}
 function photoUpload(id,data,tid){return SB.storage.from('photos').upload((tid||CS.team.id)+'/'+id+'.jpg',dataUrlBlob(data),{upsert:true,contentType:'image/jpeg'}).then(function(r){if(r.error)throw r.error})}
@@ -2867,6 +3065,7 @@ var phWant={};
 function ensurePhoto(id,cb){if(!id||PHC[id]||!cloudOn()||!CS.team||phWant[id])return;phWant[id]=1;
   SB.storage.from('photos').download(CS.team.id+'/'+id+'.jpg').then(function(r){if(r.error||!r.data)return;var fr=new FileReader();fr.onload=function(){phPut(id,fr.result);delete phWant[id];if(cb)cb()};fr.readAsDataURL(r.data)}).catch(function(){})}
 
+if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))navigator.serviceWorker.register('sw.js').catch(function(){});
 if(cloudOn())cloudBoot();
 else if(FS_OK)idbGet().then(function(h){if(!h){startBox();return}fs.h=h;fs.name=h.name;fs.state='perm';drawBackup();
   return h.queryPermission({mode:'readwrite'}).then(function(pm){if(pm==='granted'){fs.state='on';fs.at=S.savedAt||null;drawBackup();return syncWithFile(false)}startBox()})}).catch(function(){startBox()});
@@ -3175,6 +3374,136 @@ function capOf(devs,racks){var o={u:0,uT:0,sw:0,swT:0,jk:0,jkT:0,fb:0,fbT:0,ol:0
   return o}
 function capBar(u,t,label){if(!t)return '<td class="cap muted">—</td>';var pc=Math.round(u/t*100),free=t-u,col=pc>=90?'var(--bad)':pc>=75?'var(--warn)':'var(--ok)';
   return '<td class="cap" title="'+label+': '+u+' of '+t+' used, '+free+' free"><div class="bar"><i style="width:'+pc+'%;background:'+col+'"></i></div><span><b>'+free+'</b> free <span class="muted">/ '+t+'</span></span></td>'}
+// ================= Issues: problems flagged on a port, device, rack or closet =================
+var ISSUE_TYPES=[['broken','Broken jack or port'],['run','Needs a cable run'],['label','Label is wrong or missing'],['replace','Hardware needs replacing'],['tidy','Needs tidying'],['other','Something else']];
+var ISX={};   // target id -> open issue count (rebuilt every render)
+function issueIndex(){ISX={};(S.issues||[]).forEach(function(i){if(i.status==='open'&&i.on){ISX[i.on.id]=(ISX[i.on.id]||0)+1;ISX['loc:'+issueLoc(i)]=(ISX['loc:'+issueLoc(i)]||0)+1}})}
+function issueLoc(i){var o=i.on||{},x;if(o.kind==='loc')return o.id;if(o.kind==='rack'){x=byId(S.racks,o.id);return x?x.locId:i.loc}
+  if(o.kind==='dev'){x=byId(S.devices,o.id);x=x&&rackOfDevice(x);return x?x.locId:i.loc}
+  if(o.kind==='port'){x=byId(S.ports,o.id);x=x&&deviceOfPort(x);x=x&&rackOfDevice(x);return x?x.locId:i.loc}return i.loc}
+function openIssuesIn(l){return ISX['loc:'+l]||0}
+function issueWhat(i){var o=i.on||{},x;if(o.kind==='port'){x=byId(S.ports,o.id);return x?'Port '+pn(x)+(x.label?' — '+x.label:''):'(deleted port)'}
+  if(o.kind==='dev'){x=byId(S.devices,o.id);return x?dn(x):'(deleted device)'}if(o.kind==='rack'){x=byId(S.racks,o.id);return x?(x.label||x.name):'(deleted rack)'}
+  x=byId(S.locations,o.id);return x?'The closet itself':'(deleted closet)'}
+function issueTitle(i){var t=ISSUE_TYPES.filter(function(x){return x[0]===i.type})[0];return t?t[1]:'Issue'}
+function whoAmI(){return cloudOn()&&CS.user?{uid:CS.user.id,name:meLabel()}:{uid:'',name:setting('myName')||'Me'}}
+function nameOfTarget(kind,id){return issueWhat({on:{kind:kind,id:id}})}
+// new / edit
+function issueBox(kind,id,ex){var tgt=ex?ex.on:{kind:kind,id:id};var it=ex||{type:'broken',notes:'',assignee:null};
+  var go=function(mem){var opts=[['','Nobody yet']].concat(mem.map(function(m){return [m.uid,m.name]}));
+    var o=ovl('issov','<h2 style="margin-top:0">'+(ex?'Edit issue':'Report a problem')+'</h2><p class="muted" style="margin-top:-6px">'+esc(nameOfTarget(tgt.kind,tgt.id))+' · '+esc(locFull(byId(S.locations,issueLoc({on:tgt})))||'')+'</p>'+
+      '<label>What’s wrong<select id="isT">'+ISSUE_TYPES.map(function(t){return '<option value="'+t[0]+'"'+(t[0]===it.type?' selected':'')+'>'+esc(t[1])+'</option>'}).join('')+'</select></label>'+
+      '<label>Details<textarea id="isN" rows="3" placeholder="e.g. No link light, jack is loose, cable cut at the ceiling">'+esc(it.notes||'')+'</textarea></label>'+
+      '<label>Assign to'+(mem.length?'<select id="isA">'+opts.map(function(x){return '<option value="'+esc(x[0])+'"'+(it.assignee&&it.assignee.uid===x[0]?' selected':'')+'>'+esc(x[1])+'</option>'}).join('')+'</select>':'<input id="isA" value="'+esc(it.assignee&&it.assignee.name||'')+'" placeholder="Name (optional)">')+'</label>'+
+      '<div class="row" style="margin-top:12px"><button class="pri" id="isOk">'+(ex?'Save':'Report it')+'</button><button id="isX">Cancel</button></div>',61);
+    el('isX').onclick=function(){closeOvl('issov')};
+    el('isOk').onclick=function(){var a=el('isA'),as=null;if(a.tagName==='SELECT'){if(a.value)as={uid:a.value,name:(mem.filter(function(m){return m.uid===a.value})[0]||{}).name}}else if(a.value.trim())as={uid:'',name:a.value.trim()};
+      if(!S.issues)S.issues=[];var me=whoAmI();
+      if(ex){ex.type=el('isT').value;ex.notes=el('isN').value.trim();ex.assignee=as;ex.upd=new Date().toISOString()}
+      else S.issues.unshift({id:uid(),on:{kind:tgt.kind,id:tgt.id},loc:issueLoc({on:tgt}),type:el('isT').value,notes:el('isN').value.trim(),status:'open',at:new Date().toISOString(),by:me.name,byId:me.uid,assignee:as});
+      closeOvl('issov');commit();toast(ex?'Issue saved.':'Issue reported'+(as?' and assigned to '+as.name:'')+'.')};
+    setTimeout(function(){el('isN').focus()},0)};
+  if(cloudOn()&&CS.team)teamMembers(CS.team.id).then(function(r){go((r.data||[]).filter(function(m){return m.role!=='viewer'}).map(function(m){return {uid:m.user_id,name:m.user_id===CS.user.id?meLabel()+' (me)':nameOr(m.name,m.email)}}).sort(function(a,b){return natCmp(a.name,b.name)}))}).catch(function(){go([])});
+  else go([])}
+function issueDone(i,done){var me=whoAmI();i.status=done?'done':'open';if(done){i.doneAt=new Date().toISOString();i.doneBy=me.name}else{delete i.doneAt;delete i.doneBy}commit();toast(done?'Marked as fixed.':'Reopened.')}
+function issueGo(i){var o=i.on||{},x;
+  if(o.kind==='port'){x=byId(S.ports,o.id);x=x&&deviceOfPort(x);if(x){var r=rackOfDevice(x);ui.loc=r.locId;ui.rack=r.id;ui.dev=x.id;ui.back='issues';ui.view='device';ui.entered=true;ui.flashPort=o.id;return render()}}
+  if(o.kind==='dev'){x=byId(S.devices,o.id);if(x){var r2=rackOfDevice(x);ui.loc=r2.locId;ui.rack=r2.id;ui.dev=x.id;ui.back='issues';ui.view='device';ui.entered=true;return render()}}
+  if(o.kind==='rack'){x=byId(S.racks,o.id);if(x){ui.loc=x.locId;ui.rack=x.id;ui.view='rack';ui.zoom=null;ui.entered=true;return render()}}
+  var l=issueLoc(i);if(l&&byId(S.locations,l)){ui.loc=l;ui.view='map';ui.entered=true;return render()}toast('That item has been deleted.',1)}
+function renderIssues(){var m=el('main'),f=ui.isf||(ui.isf={st:'open',where:'all',who:'any'}),me=whoAmI(),all=S.issues||[];
+  var list=all.filter(function(i){if(f.st!=='all'&&i.status!==f.st)return false;if(f.where==='here'&&issueLoc(i)!==ui.loc)return false;
+    if(f.who==='me'&&!(i.assignee&&((me.uid&&i.assignee.uid===me.uid)||(!me.uid&&i.assignee.name===me.name))))return false;if(f.who==='none'&&i.assignee)return false;return true});
+  var cur=byId(S.locations,ui.loc),openN=all.filter(function(i){return i.status==='open'}).length;
+  function sel(id,v,opts){return '<select id="'+id+'">'+opts.map(function(o){return '<option value="'+o[0]+'"'+(o[0]===v?' selected':'')+'>'+esc(o[1])+'</option>'}).join('')+'</select>'}
+  var h='<div class="row" style="align-items:center"><h2 style="margin:0">Issues</h2><span class="muted">'+openN+' open</span><span style="flex:1"></span>'+
+    sel('isfS',f.st,[['open','Open'],['done','Fixed'],['all','All']])+sel('isfW',f.where,[['all','Every closet']].concat(cur?[['here','Only '+(cur.label||cur.name)]]:[]))+
+    sel('isfA',f.who,[['any','Anyone'],['me','Assigned to me'],['none','Not assigned']])+(cur?'<button class="pri" id="isNew">+ Report a problem in '+esc(cur.label||cur.name)+'</button>':'')+'</div>'+
+    '<p class="muted" style="margin:4px 0 10px">Tap a port in Rack view and choose <b>Report a problem</b> to flag it. Open issues show as red dots on ports and next to closets.</p>';
+  if(!list.length)h+='<div class="card muted">'+(all.length?'Nothing matches these filters.':'No issues reported yet.')+'</div>';
+  list.forEach(function(i){var l=byId(S.locations,issueLoc(i)),done=i.status==='done';
+    h+='<div class="card issue'+(done?' done':'')+'" data-is="'+i.id+'"><div class="row" style="align-items:flex-start;gap:12px;flex-wrap:nowrap"><span class="isd"></span><div style="flex:1;min-width:0">'+
+      '<div><b>'+esc(issueTitle(i))+'</b> <span class="muted">· '+esc(l?locFull(l):'?')+' · '+esc(issueWhat(i))+'</span></div>'+
+      (i.notes?'<div style="margin:4px 0;white-space:pre-wrap">'+esc(i.notes)+'</div>':'')+
+      '<div class="muted" style="font-size:12px">Reported by '+esc(i.by||'?')+' '+esc(fmtTime(i.at))+(i.assignee?' · <b style="color:var(--text)">Assigned to '+esc(i.assignee.name)+'</b>':' · not assigned')+(done?' · fixed by '+esc(i.doneBy||'?')+' '+esc(fmtTime(i.doneAt)):'')+'</div></div>'+
+      '<div class="row" style="flex:none;gap:6px"><button data-isgo="'+i.id+'">Go to it</button>'+(done?'<button data-isre="'+i.id+'">Reopen</button>':'<button class="pri" data-isdone="'+i.id+'">Mark fixed</button>')+'<button data-ised="'+i.id+'">Edit</button><button class="dng" data-isdel="'+i.id+'" title="Delete">✕</button></div></div></div>'});
+  m.innerHTML=h;
+  el('isfS').onchange=function(){f.st=el('isfS').value;render()};el('isfW').onchange=function(){f.where=el('isfW').value;render()};el('isfA').onchange=function(){f.who=el('isfA').value;render()};
+  if(el('isNew'))el('isNew').onclick=function(){issueBox('loc',cur.id)};
+  function find(b,k){return byId(S.issues,b.getAttribute(k))}
+  m.querySelectorAll('[data-isgo]').forEach(function(b){b.onclick=function(){issueGo(find(b,'data-isgo'))}});
+  m.querySelectorAll('[data-isdone]').forEach(function(b){b.onclick=function(){issueDone(find(b,'data-isdone'),true)}});
+  m.querySelectorAll('[data-isre]').forEach(function(b){b.onclick=function(){issueDone(find(b,'data-isre'),false)}});
+  m.querySelectorAll('[data-ised]').forEach(function(b){b.onclick=function(){var i=find(b,'data-ised');issueBox(null,null,i)}});
+  m.querySelectorAll('[data-isdel]').forEach(function(b){b.onclick=function(){if(!confirm('Delete this issue? (Use “Mark fixed” to keep a record.)'))return;var i=find(b,'data-isdel');S.issues=S.issues.filter(function(x){return x!==i});commit()}})}
+// small list of open issues for a device / closet page
+function issueStrip(kind,id){var a=(S.issues||[]).filter(function(i){return i.status==='open'&&i.on&&(i.on.id===id||(kind==='dev'&&i.on.kind==='port'&&(byId(S.ports,i.on.id)||{}).devId===id)||(kind==='loc'&&issueLoc(i)===id))});
+  if(!a.length)return '';
+  return '<div class="card isstrip"><b>'+a.length+' open issue'+(a.length===1?'':'s')+'</b>'+a.slice(0,6).map(function(i){return '<div class="row" style="gap:8px;margin-top:6px;flex-wrap:nowrap"><span class="isd"></span><span style="flex:1;min-width:0"><b>'+esc(issueTitle(i))+'</b> <span class="muted">· '+esc(issueWhat(i))+(i.assignee?' · '+esc(i.assignee.name):'')+'</span>'+(i.notes?'<br><span class="muted" style="font-size:12px">'+esc(i.notes.slice(0,140))+'</span>':'')+'</span><button class="pri" data-isdone="'+i.id+'">Fixed</button></div>'}).join('')+
+    (a.length>6?'<div class="muted" style="margin-top:6px">…and '+(a.length-6)+' more in the Issues tab</div>':'')+'</div>'}
+document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('.isstrip [data-isdone]');if(!b)return;var i=byId(S.issues||[],b.getAttribute('data-isdone'));if(i)issueDone(i,true)});
+// ================= District network map: every closet, and the links between them =================
+function netLinks(){var ix=closetIdx(S),E={};
+  S.cables.forEach(function(c){var a=ix.P[c.a],b=ix.P[c.b];if(!a||!b||a===b)return;var k=a<b?a+'|'+b:b+'|'+a,e=E[k]||(E[k]={a:a<b?a:b,b:a<b?b:a,fiber:0,copper:0});
+    var pa=byId(S.ports,c.a),pb=byId(S.ports,c.b);if(c.trunk||bothFib(pa,pb))e.fiber++;else e.copper++});
+  return Object.keys(E).map(function(k){return E[k]})}
+function netCore(links){var c=S.settings.coreLoc;if(c&&byId(S.locations,c))return c;var deg={};links.forEach(function(e){deg[e.a]=(deg[e.a]||0)+e.fiber+e.copper;deg[e.b]=(deg[e.b]||0)+e.fiber+e.copper});
+  var best=null;S.locations.forEach(function(l){var d=deg[l.id]||0,mdf=/\bMDF\b/i.test(l.name+' '+(l.label||''))?1:0;if(!best||mdf>best.m||(mdf===best.m&&d>best.d))best={id:l.id,d:d,m:mdf}});return best&&(best.d||best.m)?best.id:null}
+var NET_COLS=['#f0a33a','#38bdf8','#a78bfa','#34d399','#f472b6','#facc15','#fb7185','#2dd4bf','#818cf8','#a3e635'];
+function renderNet(){var m=el('main'),links=netLinks(),core=netCore(links);
+  var adj={};links.forEach(function(e){(adj[e.a]=adj[e.a]||[]).push(e);(adj[e.b]=adj[e.b]||[]).push(e)});
+  // a tree from the main closet (breadth first); groups of closets not reachable from it get their own tree below.
+  // Links that aren't part of a tree are drawn dashed.
+  var depth={},kids={},tree={},pos={},row=0,NW=210,NH=64,GX=110,GY=18,heads=[];
+  function grow(root){depth[root]=0;var q=[root],all=[];while(q.length){var x=q.shift();all.push(x);kids[x]=[];
+    (adj[x]||[]).slice().sort(function(e1,e2){var o1=e1.a===x?e1.b:e1.a,o2=e2.a===x?e2.b:e2.a;return natCmp(locFull(byId(S.locations,o1)),locFull(byId(S.locations,o2)))}).forEach(function(e){var o=e.a===x?e.b:e.a;
+      if(depth[o]==null){depth[o]=depth[x]+1;kids[x].push(o);tree[e.a+'|'+e.b]=1;q.push(o)}})}return all}
+  function place(n){var ks=kids[n]||[];if(!ks.length){pos[n]={x:depth[n]*(NW+GX),y:row*(NH+GY)};row++;return}ks.forEach(place);
+    pos[n]={x:depth[n]*(NW+GX),y:(pos[ks[0]].y+pos[ks[ks.length-1]].y)/2}}
+  if(core){grow(core);place(core)}
+  var deg=function(id){return (adj[id]||[]).reduce(function(t,e){return t+e.fiber+e.copper},0)};
+  var others=S.locations.filter(function(l){return depth[l.id]==null&&(adj[l.id]||[]).length}).sort(function(a,b){return deg(b.id)-deg(a.id)||natCmp(locFull(a),locFull(b))});
+  var islands=[];
+  others.forEach(function(l){if(depth[l.id]!=null)return;var gap=row?1:0;row+=gap;var y0=row*(NH+GY);grow(l.id);place(l.id);islands.push({id:l.id,y:y0})});
+  var lone=S.locations.filter(function(l){return depth[l.id]==null});
+  var loneTop=row*(NH+GY)+(lone.length&&row?40:0),perRow=Math.max(3,Math.floor(((m.clientWidth||1100)-40)/(NW+24)));
+  lone.forEach(function(l,i){pos[l.id]={x:(i%perRow)*(NW+24),y:loneTop+Math.floor(i/perRow)*(NH+GY),lone:1}});
+  var W=40,H=40;Object.keys(pos).forEach(function(k){W=Math.max(W,pos[k].x+NW+110);H=Math.max(H,pos[k].y+NH+20)});
+  // building colours
+  var bcol={},bi=0;S.sites.forEach(function(st){bcol[st.id]=NET_COLS[bi++%NET_COLS.length]});
+  function colOf(l){return l.siteId&&bcol[l.siteId]||'#56677a'}
+  var svg='';
+  links.forEach(function(e){var A=pos[e.a],B=pos[e.b];if(!A||!B)return;var t=tree[e.a+'|'+e.b]||tree[e.b+'|'+e.a],L=A.x<=B.x?A:B,R=A.x<=B.x?B:A;
+    var same=Math.abs(L.x-R.x)<1,x1,y1,x2,y2,d,tx,ty;
+    if(same){var U=L.y<=R.y?L:R,Dn=L.y<=R.y?R:L;x1=U.x+NW;y1=U.y+NH/2;x2=Dn.x+NW;y2=Dn.y+NH/2;var bx=x1+Math.min(70,30+Math.abs(y2-y1)/4);
+      d='M'+x1+' '+y1+' C'+bx+' '+y1+' '+bx+' '+y2+' '+x2+' '+y2;tx=bx-4;ty=(y1+y2)/2+4}
+    else{x1=L.x+NW;y1=L.y+NH/2;x2=R.x;y2=R.y+NH/2;var mx=(x1+x2)/2;d='M'+x1+' '+y1+' C'+mx+' '+y1+' '+mx+' '+y2+' '+x2+' '+y2;tx=x2-40;ty=y2-7}
+    var lab=[e.fiber?e.fiber+' fiber':'',e.copper?e.copper+' copper':''].filter(Boolean).join(' · ');
+    svg+='<g class="nl'+(t?'':' extra')+'"><path d="'+d+'" stroke="'+(e.fiber?'#38bdf8':'#94a3b8')+'" stroke-width="'+Math.min(6,1.5+Math.log2(1+e.fiber+e.copper))+'" fill="none"'+(t?'':' stroke-dasharray="6 5"')+'/>'+
+      '<text x="'+tx+'" y="'+ty+'" text-anchor="'+(same?'start':'middle')+'" class="nlt">'+esc(lab)+'</text><title>'+esc(locFull(byId(S.locations,e.a))+' ↔ '+locFull(byId(S.locations,e.b))+': '+lab)+'</title></g>'});
+  if(islands.length)svg+='<text x="0" y="'+(islands[0].y-14)+'" class="nlh">'+(core?'Not linked to the main closet':'Linked closets')+'</text>';
+  if(lone.length)svg+='<text x="0" y="'+(loneTop-12)+'" class="nlh">No links to other closets yet</text>';
+  S.locations.forEach(function(l){var P=pos[l.id];if(!P)return;var st=siteOf(l),rs=S.racks.filter(function(r){return r.locId===l.id}),nd=S.devices.filter(function(d){return rs.some(function(r){return r.id===d.rackId})}).length;
+    var h=prLive()?lockHolder(l.id):null,iss=typeof openIssuesIn==='function'?openIssuesIn(l.id):0;
+    svg+='<g class="nn'+(l.id===core?' core':'')+(l.id===ui.loc?' cur':'')+'" data-net="'+l.id+'" transform="translate('+P.x+','+P.y+')"><rect width="'+NW+'" height="'+NH+'" rx="8" class="nb"/>'+
+      '<rect width="6" height="'+NH+'" rx="3" fill="'+colOf(l)+'"/>'+
+      '<text x="16" y="22" class="nt">'+esc((l.label||l.name).slice(0,24))+(l.id===core?'  ★':'')+'</text>'+
+      '<text x="16" y="40" class="ns">'+esc((st?st.name:'No site').slice(0,30))+'</text>'+
+      '<text x="16" y="56" class="ns">'+rs.length+' rack'+(rs.length===1?'':'s')+' · '+nd+' device'+(nd===1?'':'s')+'</text>'+
+      (iss?'<g transform="translate('+(NW-28)+',8)"><circle cx="10" cy="10" r="10" fill="#dc2626"/><text x="10" y="14" text-anchor="middle" class="nbad">'+iss+'</text><title>'+iss+' open issue'+(iss===1?'':'s')+'</title></g>':'')+
+      (h?'<g transform="translate('+(NW-(iss?118:90))+','+(NH-22)+')"><rect width="'+(iss?110:82)+'" height="16" rx="8" fill="'+(h.me?'#16a34a':'#b91c1c')+'"/><text x="8" y="12" class="nbad" style="text-anchor:start">● '+esc(h.me?'you':firstName(h.name)).slice(0,12)+'</text><title>'+esc(h.me?'You are in this closet':h.name+' is working here')+'</title></g>':'')+
+      '<title>Open '+esc(locFull(l))+'</title></g>'});
+  var legend=S.sites.map(function(st){return '<span class="nlg"><i style="background:'+bcol[st.id]+'"></i>'+esc(st.name)+'</span>'}).join('');
+  m.innerHTML='<div class="row noprint" style="align-items:center"><h2 style="margin:0">District network</h2><span class="muted">'+S.locations.length+' closets · '+links.length+' link'+(links.length===1?'':'s')+' between closets</span><span class="sp" style="flex:1"></span>'+
+    '<label>Main closet <select id="netCore"><option value="">'+(core&&!S.settings.coreLoc?'Automatic ('+esc((byId(S.locations,core)||{}).name||'')+')':'Automatic')+'</option>'+S.locations.slice().sort(function(a,b){return natCmp(locFull(a),locFull(b))}).map(function(l){return '<option value="'+l.id+'"'+(S.settings.coreLoc===l.id?' selected':'')+'>'+esc(locFull(l))+'</option>'}).join('')+'</select></label>'+
+    '<button id="netPrint">Print</button></div>'+
+    '<p class="muted" style="margin:4px 0 8px">Closets are joined wherever a cable or fiber strand runs between them, starting from the main closet (★). Blue lines are fiber, grey are copper; dashed lines are extra links. Tap a closet to open it.</p>'+
+    (legend?'<div class="row" style="gap:14px;margin-bottom:8px">'+legend+'</div>':'')+
+    (S.locations.length?'<div id="netwrap"><svg id="netsvg" width="'+W+'" height="'+H+'" viewBox="-10 -10 '+(W+10)+' '+(H+10)+'">'+svg+'</svg></div>':'<div class="card muted">Add closets to see the network.</div>')+
+    (links.length?'':'<div class="card" style="margin-top:10px"><b>No links between closets yet.</b><p class="muted" style="margin:4px 0 0">Connect a fiber panel port in one closet to a fiber panel port in another (Rack view → tap the port → Connect, or “pick from a list”). Each strand you connect shows up here.</p></div>');
+  m.querySelectorAll('[data-net]').forEach(function(g){g.onclick=function(){ui.loc=g.getAttribute('data-net');ui.rack=null;ui.dev=null;ui.view='map';ui.entered=true;render()}});
+  el('netCore').onchange=function(){S.settings.coreLoc=el('netCore').value||undefined;if(!S.settings.coreLoc)delete S.settings.coreLoc;commit()};
+  el('netPrint').onclick=function(){window.print()}}
 function renderCapacity(){var m=el('main');
   var groups=S.sites.map(function(st){return {name:st.name,locs:S.locations.filter(function(l){return l.siteId===st.id})}});
   var loose=S.locations.filter(function(l){return !l.siteId||!byId(S.sites,l.siteId)});if(loose.length)groups.push({name:S.sites.length?'No site':'Closets',locs:loose});
@@ -3220,7 +3549,7 @@ function histDiff(prevJ){var A;try{A=JSON.parse(prevJ)}catch(e){return []}
     if(del.length)out.push(del.length===1?'Removed '+t[1]+' '+del[0]:'Removed '+del.length+' '+t[1]+'s (e.g. '+del[0]+')')});
   return out}
 function logHistory(prevJ,why){if(!Array.isArray(S.history))S.history=[];var items=why?[why]:histDiff(prevJ);if(!items.length)return;
-  var dev=(cloudOn()&&CS.user&&CS.user.email)||(navigator.userAgentData&&navigator.userAgentData.platform)||navigator.platform||'';
+  var dev=(cloudOn()&&CS.user&&(myName()||CS.user.email))||(navigator.userAgentData&&navigator.userAgentData.platform)||navigator.platform||'';
   S.history.unshift({at:new Date().toISOString(),items:items.slice(0,8),more:Math.max(0,items.length-8),dev:dev});if(S.history.length>HIST_MAX)S.history.length=HIST_MAX}
 function showHistory(){var hs=S.history||[];
   modal('Change history',[],null,function(){var box=el('mbox'),w=document.createElement('div');w.style.minWidth='min(640px,86vw)';
@@ -3582,7 +3911,7 @@ document.addEventListener('keydown',function(e){
 
 
 ui.loc=S.locations.length?S.locations[0].id:null;
-openFromHash();
+if(!cloudOn())openFromHash();
 render();
 }
 boot();
