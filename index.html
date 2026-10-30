@@ -406,7 +406,7 @@ function kindRow(k){for(var i=0;i<DEVICE_KINDS.length;i++)if(DEVICE_KINDS[i][0]=
 function kindOpts(){return DEVICE_KINDS.map(function(k){return [k[0],k[1]]})}
 function portsTxt(d){return (d.portCount?d.portCount+(d.kind==='pdu'||d.kind==='ups'?' outlets':sfpMain(d)?' SFP+ ports':' ports'):(d.kind==='pdu'||d.kind==='ups'?'no outlets':'no ports'))+(d.sfp?' + '+d.sfp+' SFP+':'')}
 function deviceColor(d){return d.color||DEV_FALLBACK[d.kind]||'#2563eb'}
-var APP_VERSION='4.0.8'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
+var APP_VERSION='4.0.9'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
 
 var Q='"'; // double-quote char used when building the cable rows on the Labels tab
 function siteFold(){var c={};(S.sites||[]).forEach(function(st,i){if(i>0)c[st.id]=true});return c}
@@ -554,7 +554,19 @@ function setSfp(d,n){var have=sfpOf(d.id);n=Math.max(0,n|0);
   for(var k=have.length+1;k<=n;k++)S.ports.push({id:uid(),devId:d.id,num:k,label:'',sfp:true});
   d.sfp=n}
 // every switch gets 4 SFP+ cages unless it has been given a number (0 included); the ids are fixed so two devices doing this agree
+// an SFP+ switch has no separate cages: whatever was plugged into them moves to its first free main ports
+function foldSfp(j,d){var mine=j.ports.filter(function(p){return p.devId===d.id}),ext=mine.filter(function(p){return p.sfp}).sort(function(a,b){return a.num-b.num});if(!ext.length){d.sfp=0;return 0}
+  var cab=function(id){return (j.cables||[]).filter(function(c){return c.a===id||c.b===id})},hr=function(id){return (j.homeruns||[]).filter(function(h){return h.port===id})};
+  var free=mine.filter(function(p){return !p.sfp&&!cab(p.id).length&&!hr(p.id).length}).sort(function(a,b){return a.num-b.num}),moved=0,kept=[];
+  ext.forEach(function(x){var cs=cab(x.id),hs=hr(x.id);
+    if(cs.length||hs.length){var t=free.shift();if(!t){kept.push(x);return}
+      cs.forEach(function(c){if(c.a===x.id)c.a=t.id;if(c.b===x.id)c.b=t.id});hs.forEach(function(h){h.port=t.id});
+      if(!t.label&&x.label)t.label=x.label;if(!t.color&&x.color)t.color=x.color;(j.issues||[]).forEach(function(i){if(i.on&&i.on.id===x.id)i.on.id=t.id});moved++}});
+  var keep={};kept.forEach(function(x){keep[x.id]=1});
+  j.ports=j.ports.filter(function(p){return !(p.devId===d.id&&p.sfp&&!keep[p.id])});
+  kept.forEach(function(x,i){x.num=i+1});d.sfp=kept.length;return moved}
 function migrateSfp(j){if(!j||!Array.isArray(j.devices)||!Array.isArray(j.ports))return j;
+  j.devices.forEach(function(d){if(d.media==='sfp'&&/^(switch|router|firewall)$/.test(d.kind)&&d.sfp)foldSfp(j,d)});
   j.devices.forEach(function(d){if(d.kind!=='switch'||d.sfp!=null)return;d.sfp=4;
     for(var k=1;k<=4;k++){var id=d.id+'-sfp'+k;if(!j.ports.some(function(p){return p.id===id}))j.ports.push({id:id,devId:d.id,num:k,label:'',sfp:true})}});return j}
 function pad2(n){return String(n).length<2?'0'+n:String(n)}
@@ -700,6 +712,7 @@ function delRack(id,quiet){
   if(!quiet)commit()}
 
 // port limits: 96 for most hardware (a 2U 96-port panel), 144 for fiber enclosures; every 2 rows of 24 need 1U
+function mediaField(){var m=el('f20'),sf=el('f19');if(!m||!sf)return;var was=sf.value;function u(){var on=m.value==='sfp';if(on){if(sf.value!=='0')was=sf.value;sf.value=0}else if(sf.value==='0'&&was!=='0')sf.value=was;sf.disabled=on;sf.title=on?'An SFP+ switch has no separate cages — anything plugged into them moves to its own SFP+ ports':''}m.addEventListener('change',u);u()}
 function maxPorts(kind){return kind==='fiber'?144:96}
 function needU(pc){return Math.max(1,Math.ceil(Math.ceil((pc||0)/24)/2))}
 function portCheck(kind,pc,hu){var mx=maxPorts(kind);if(!(pc>=0&&pc<=mx)){toast('Ports / outlets must be between 0 and '+mx+(kind==='fiber'?'':' (fiber panels can have up to 144)')+'.',1);return false}
@@ -721,7 +734,7 @@ function addDevice(rackId,preset,atU){
     {label:'Port numbering (devices with more than 24 ports)',options:NUM_OPTS,value:''},
     {label:'Extra SFP+ ports (switches, routers, firewalls — separate from the ports above)',type:'number',value:preset?(preset.sfp||0):4},
     {label:'Main ports are (switches, routers, firewalls)',options:[['','Copper RJ45 (regular Ethernet)'],['sfp','SFP+ cages (fiber — e.g. a core switch)']],value:preset&&preset.media||''}];
-  setTimeout(function(){var k=el('f0'),sf=el('f19'),typed=false;if(!k||!sf)return;sf.addEventListener('input',function(){typed=true});k.addEventListener('change',function(){if(!typed)sf.value=k.value==='switch'?4:0})},0);
+  setTimeout(function(){var k=el('f0'),sf=el('f19'),typed=false;if(!k||!sf)return;sf.addEventListener('input',function(){typed=true});k.addEventListener('change',function(){if(!typed&&el('f20').value!=='sfp')sf.value=k.value==='switch'?4:0});mediaField()},0);
   modal('Add device to '+r.name+(atU?' at U'+atU:''),f,function(v){
     var kind=v[0],pc=parseInt(v[3],10),su=parseInt(v[4],10),hu=parseInt(v[5],10);
     if(!v[1].trim()){toast('Give the device a name.',1);return false}
@@ -738,7 +751,7 @@ function addDevice(rackId,preset,atU){
       fw:v[12].trim(),vlan:v[13].trim(),mgmt:v[14].trim(),warranty:v[15].trim(),notes:v[16].trim(),removable:kind==='patch'?v[17]:'',numbering:v[18]||''};
     S.devices.push(d);
     for(var n=1;n<=pc;n++)S.ports.push({id:uid(),devId:d.id,num:n,label:''});
-    if(SFP_KINDS[kind]){setSfp(d,parseInt(v[19],10)||0);if(v[20]==='sfp')d.media='sfp'}
+    if(SFP_KINDS[kind]){if(v[20]==='sfp'){d.media='sfp';d.sfp=0}else setSfp(d,parseInt(v[19],10)||0)}
     if(setting('autoLabel')){if(!d.label)d.label=fillTpl(setting('devTpl'),d);
       portsOf(d.id).forEach(function(p){p.label=fillTpl(setting('portTpl'),d,p)})}
     ui.dev=d.id;commit()},function(){
@@ -764,7 +777,7 @@ function nextFreeU(rackId){var r=byId(S.racks,rackId);if(!r)return 1;var u=1;
   for(;;){var hit=ds.filter(function(d){return u<=d.startU+d.heightU-1&&d.startU<=u})[0];
     if(!hit)return u;u=hit.startU+hit.heightU;if(u>r.height)return 1}}
 
-function editDevice(d){modal('Device: '+dn(d),[
+function editDevice(d){setTimeout(mediaField,0);modal('Device: '+dn(d),[
   {label:'Kind',options:kindOpts(),value:d.kind},
   {label:'Name',value:d.name},{label:'Label',value:d.label},
   {label:'Starting U (from the bottom)',type:'number',value:d.startU},
@@ -787,7 +800,7 @@ function editDevice(d){modal('Device: '+dn(d),[
     if(!(su>=1&&hu>=1)){toast('U values must be 1 or more.',1);return false}
     if(!portCheck(kind,pc,hu))return false;
     var sf=SFP_KINDS[kind]?(parseInt(v[19],10)||0):0;if(sf<0||sf>8){toast('SFP+ ports must be between 0 and 8.',1);return false}
-    if(sf<(d.sfp||0)){var lostS=sfpOf(d.id).filter(function(p){return p.num>sf}),cabS=lostS.filter(function(p){return cableOf(p.id)||homerunOf(p.id)}).length;
+    if(v[20]==='sfp')sf=0;else if(sf<(d.sfp||0)){var lostS=sfpOf(d.id).filter(function(p){return p.num>sf}),cabS=lostS.filter(function(p){return cableOf(p.id)||homerunOf(p.id)}).length;
       if(!confirm('Remove '+lostS.length+' SFP+ port'+(lostS.length===1?'':'s')+(cabS?' and the '+cabS+' cable'+(cabS===1?'':'s')+' plugged into them':'')+'?'))return false}
     if(su+hu-1>r.height){toast('Does not fit — the rack is '+r.height+'U.',1);return false}
     var clash=S.devices.filter(function(x){return x!==d&&x.rackId===d.rackId&&su<=x.startU+x.heightU-1&&x.startU<=su+hu-1})[0];
@@ -808,7 +821,7 @@ function editDevice(d){modal('Device: '+dn(d),[
     }
     d.kind=kind;d.name=v[1].trim();d.label=v[2].trim();d.startU=su;d.heightU=hu;d.portCount=pc;d.color=v[6]||'';
     d.ip=v[7].trim();d.asset=v[8].trim();d.serial=v[9].trim();d.model=v[10].trim();d.mac=v[11].trim();
-    d.fw=v[12].trim();d.vlan=v[13].trim();d.mgmt=v[14].trim();d.warranty=v[15].trim();d.notes=v[16].trim();d.removable=kind==='patch'?v[17]:'';d.numbering=v[18]||'';if(sf!==(d.sfp||0))setSfp(d,sf);if(SFP_KINDS[kind]&&v[20]==='sfp')d.media='sfp';else delete d.media;
+    d.fw=v[12].trim();d.vlan=v[13].trim();d.mgmt=v[14].trim();d.warranty=v[15].trim();d.notes=v[16].trim();d.removable=kind==='patch'?v[17]:'';d.numbering=v[18]||'';if(SFP_KINDS[kind]&&v[20]==='sfp'){d.media='sfp';var mv=foldSfp(S,d);if(mv)toast('Moved '+mv+' cable'+(mv===1?'':'s')+' from the extra SFP+ cages onto the switch’s own SFP+ ports.')}else{delete d.media;if(sf!==(d.sfp||0))setSfp(d,sf)}
     commit()})}
 
 function placePicked(rid,u){var i=window.__tplPick;if(i==null||!PRESETS[i])return false;var pr=PRESETS[i],top=Math.min(u,byId(S.racks,rid).height-pr.h+1);
