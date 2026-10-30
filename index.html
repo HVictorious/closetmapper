@@ -406,7 +406,7 @@ function kindRow(k){for(var i=0;i<DEVICE_KINDS.length;i++)if(DEVICE_KINDS[i][0]=
 function kindOpts(){return DEVICE_KINDS.map(function(k){return [k[0],k[1]]})}
 function portsTxt(d){return (d.portCount?d.portCount+(d.kind==='pdu'||d.kind==='ups'?' outlets':' ports'):(d.kind==='pdu'||d.kind==='ups'?'no outlets':'no ports'))+(d.sfp?' + '+d.sfp+' SFP+':'')}
 function deviceColor(d){return d.color||DEV_FALLBACK[d.kind]||'#2563eb'}
-var APP_VERSION='4.0.6'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
+var APP_VERSION='4.0.7'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
 
 var Q='"'; // double-quote char used when building the cable rows on the Labels tab
 function siteFold(){var c={};(S.sites||[]).forEach(function(st,i){if(i>0)c[st.id]=true});return c}
@@ -976,10 +976,12 @@ function connectPort(pid){
   var p=byId(S.ports,pid),others=S.devices.filter(function(d){return d.id!==p.devId});
   if(!others.length){toast('Add another device first.',1);return}
   var srcDev=deviceOfPort(p),srcLoc=srcDev&&rackOfDevice(srcDev)?rackOfDevice(srcDev).locId:null;
-  if(srcDev&&srcDev.kind==='fiber'){ // a fiber port usually goes to a fiber panel in another closet
-    others.sort(function(a,b){function sc(d){var r=rackOfDevice(d);return (d.kind==='fiber'?0:2)+(r&&r.locId!==srcLoc?0:1)}return sc(a)-sc(b)})}
-  function opts(did){return portsOf(did).filter(function(x){return canLink(p,x)}).map(function(x){
-    return [x.id,'Port '+x.num+(x.label?' — '+x.label:'')]})}
+  var fibSrc=srcDev&&srcDev.kind==='fiber'||p.sfp;
+  if(srcDev&&srcDev.kind==='fiber'){ // a fiber port goes to a fiber panel in another closet (strand) or to an SFP+ port in this one (patch)
+    others.sort(function(a,b){function sc(d){var r=rackOfDevice(d),local=r&&r.locId===srcLoc;return d.kind==='fiber'&&!local?0:sfpOf(d.id).some(function(x){return canLink(p,x)})?(local?1:3):d.kind==='fiber'?2:4}return sc(a)-sc(b)})}
+  // SFP+ ports are listed apart from the copper ports, first when the cable is fiber
+  function opts(did){var cu=portsOf(did).filter(function(x){return canLink(p,x)}),sf=sfpOf(did).filter(function(x){return canLink(p,x)});
+    return (fibSrc?sf.concat(cu):cu.concat(sf)).map(function(x){return [x.id,pWord(x)+(x.label?' — '+x.label:'')]})}
   function where(d){var r=rackOfDevice(d),l=locOfRack(r);return locFull(l)+' / '+r.name+' / '+dn(d)}
   other=others[0];
   var first=opts(other.id);
@@ -999,12 +1001,14 @@ function quickConnect(pid){
   var src=deviceOfPort(p),sr=src&&rackOfDevice(src);
   var others=S.devices.filter(function(d){return d.id!==p.devId&&portsOf(d.id).concat(sfpOf(d.id)).some(function(x){return canLink(p,x)})});
   if(!others.length){toast('No other device has a free port.',1);return}
-  var want=src&&src.kind==='patch'?'switch':src&&src.kind==='switch'?'patch':'';
-  function sc(d){var r=rackOfDevice(d);return (r&&sr&&r.id===sr.id?0:4)+(want&&d.kind===want?0:2)+(d.id===qc.dev?-1:0)}
+  var fibSrc=src&&src.kind==='fiber'||p.sfp;
+  var want=fibSrc?'':src&&src.kind==='patch'?'switch':src&&src.kind==='switch'?'patch':'';
+  function hasSfp(d){return sfpOf(d.id).some(function(x){return canLink(p,x)})}
+  function sc(d){var r=rackOfDevice(d);return (r&&sr&&r.id===sr.id?0:4)+(want?(d.kind===want?0:2):fibSrc?((p.sfp?d.kind==='fiber':hasSfp(d))?0:2):0)+(d.id===qc.dev?-1:0)}
   others.sort(function(a,b){return sc(a)-sc(b)||dn(a).localeCompare(dn(b))});
   function where(d){var r=rackOfDevice(d),l=r&&locOfRack(r);return (l?locFull(l)+' / ':'')+(r?r.name+' / ':'')+dn(d)}
-  function free(did){return portsOf(did).filter(function(x){return canLink(p,x)}).concat(sfpOf(did).filter(function(x){return canLink(p,x)}))}
-  function pick(did){var f=free(did),after=f.filter(function(x){return did===qc.dev&&!x.sfp===!qc.sfp&&x.num>qc.num})[0]||f.filter(function(x){return !x.sfp===!p.sfp})[0]||f[0];return after?after.id:''}
+  function free(did){var cu=portsOf(did).filter(function(x){return canLink(p,x)}),sf=sfpOf(did).filter(function(x){return canLink(p,x)});return fibSrc&&!p.sfp?sf.concat(cu):cu.concat(sf)}
+  function pick(did){var f=free(did),after=f.filter(function(x){return did===qc.dev&&!x.sfp===!qc.sfp&&x.num>qc.num})[0]||f.filter(function(x){return fibSrc&&!p.sfp?x.sfp:!x.sfp===!p.sfp})[0]||f[0];return after?after.id:''}
   var first=others[0];
   modal('Connect '+pn(p)+' to…',[{label:'Device',options:others.map(function(d){return [d.id,where(d)]}),value:first.id},
     {label:'Port (next free one is picked for you)',options:free(first.id).map(function(x){return [x.id,pWord(x)+(x.label?' — '+x.label:'')]}),value:pick(first.id)}],
