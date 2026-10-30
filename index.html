@@ -403,9 +403,9 @@ function numMode(d){return d.numbering==='rows'||d.numbering==='zigzag'?d.number
 var JACK_OPTS=[['','Not set (treated as fixed)'],['yes','Removable keystone jacks — can be moved'],['no','Fixed — cannot be moved']];
 function kindRow(k){for(var i=0;i<DEVICE_KINDS.length;i++)if(DEVICE_KINDS[i][0]===k)return DEVICE_KINDS[i];return DEVICE_KINDS[0]}
 function kindOpts(){return DEVICE_KINDS.map(function(k){return [k[0],k[1]]})}
-function portsTxt(d){return d.portCount?d.portCount+(d.kind==='pdu'||d.kind==='ups'?' outlets':' ports'):(d.kind==='pdu'||d.kind==='ups'?'no outlets':'no ports')}
+function portsTxt(d){return (d.portCount?d.portCount+(d.kind==='pdu'||d.kind==='ups'?' outlets':' ports'):(d.kind==='pdu'||d.kind==='ups'?'no outlets':'no ports'))+(d.sfp?' + '+d.sfp+' SFP+':'')}
 function deviceColor(d){return d.color||DEV_FALLBACK[d.kind]||'#2563eb'}
-var APP_VERSION='4.0.4'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
+var APP_VERSION='4.0.5'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
 
 var Q='"'; // double-quote char used when building the cable rows on the Labels tab
 function siteFold(){var c={};(S.sites||[]).forEach(function(st,i){if(i>0)c[st.id]=true});return c}
@@ -524,7 +524,8 @@ function deviceOfPort(p){return byId(S.devices,p.devId)}
 function rackOfDevice(d){return byId(S.racks,d.rackId)}
 function locOfRack(r){return byId(S.locations,r.locId)}
 function dn(d){return d?(d.label||d.name):'(unknown device)'}
-function pn(p){var d=p?deviceOfPort(p):null;return p?(dn(d)+'-'+p.num):'(unknown port)'}
+function pn(p){var d=p?deviceOfPort(p):null;return p?(dn(d)+'-'+(p.sfp?'SFP'+p.num:p.num)):'(unknown port)'}
+function pWord(p){return p.sfp?'SFP+ '+p.num:'Port '+p.num}
 function powerOf(pid){for(var i=0;i<S.power.length;i++)if(S.power[i].port===pid)return S.power[i];return null}
 function homerunOf(pid){for(var i=0;i<S.homeruns.length;i++)if(S.homeruns[i].port===pid)return S.homeruns[i];return null}
 function cableOf(pid){for(var i=0;i<S.cables.length;i++){var c=S.cables[i];if(!c.trunk&&(c.a===pid||c.b===pid))return c}return null}
@@ -537,7 +538,17 @@ function link(a,b,extra){var c=Object.assign({id:uid(),a:a.id,b:b.id,label:''},e
 function markTrunks(){S.cables.forEach(function(c){if(c.trunk)return;var a=byId(S.ports,c.a),b=byId(S.ports,c.b);if(bothFib(a,b))c.trunk=true})}
 function cn(c){if(!c)return '';if(c.label)return c.label;var a=byId(S.ports,c.a),b=byId(S.ports,c.b);return pn(a)+' ↔ '+pn(b)}
 function kN(k){return kindRow(k)[1]}
-function portsOf(did){return S.ports.filter(function(p){return p.devId===did}).sort(function(a,b){return a.num-b.num})}
+function portsOf(did){return S.ports.filter(function(p){return p.devId===did&&!p.sfp}).sort(function(a,b){return a.num-b.num})}
+// SFP+ cages are kept apart from the copper ports: their own count (d.sfp), their own numbering (SFP+ 1, 2…)
+function sfpOf(did){return S.ports.filter(function(p){return p.devId===did&&p.sfp}).sort(function(a,b){return a.num-b.num})}
+function famOf(p){return p.sfp?sfpOf(p.devId):portsOf(p.devId)}
+var SFP_KINDS={switch:1,router:1,firewall:1};
+function setSfp(d,n){var have=sfpOf(d.id);n=Math.max(0,n|0);
+  if(n<have.length){var ids=have.filter(function(p){return p.num>n}).map(function(p){return p.id});
+    S.cables=S.cables.filter(function(c){return ids.indexOf(c.a)<0&&ids.indexOf(c.b)<0});S.homeruns=S.homeruns.filter(function(h){return ids.indexOf(h.port)<0});
+    S.ports=S.ports.filter(function(p){return ids.indexOf(p.id)<0})}
+  for(var k=have.length+1;k<=n;k++)S.ports.push({id:uid(),devId:d.id,num:k,label:'',sfp:true});
+  if(n)d.sfp=n;else delete d.sfp}
 function pad2(n){return String(n).length<2?'0'+n:String(n)}
 
 // ---- templates
@@ -699,12 +710,14 @@ function addDevice(rackId,preset,atU){
     {label:'Managed from / uplink',value:''},{label:'Warranty ends',type:'date',value:''},
     {label:'Notes',value:''},
     {label:'Patch panel jacks (patch panels only)',options:JACK_OPTS,value:preset&&preset.removable||''},
-    {label:'Port numbering (devices with more than 24 ports)',options:NUM_OPTS,value:''}];
+    {label:'Port numbering (devices with more than 24 ports)',options:NUM_OPTS,value:''},
+    {label:'SFP+ ports (switches, routers, firewalls — separate from the ports above)',type:'number',value:preset&&preset.sfp!=null?preset.sfp:0}];
   modal('Add device to '+r.name+(atU?' at U'+atU:''),f,function(v){
     var kind=v[0],pc=parseInt(v[3],10),su=parseInt(v[4],10),hu=parseInt(v[5],10);
     if(!v[1].trim()){toast('Give the device a name.',1);return false}
     if(!(hu>=1)){toast('Height must be 1 U or more.',1);return false}
     if(!portCheck(kind,pc,hu))return false;
+    var sf=parseInt(v[19],10)||0;if(sf<0||sf>8){toast('SFP+ ports must be between 0 and 8.',1);return false}
     if(!(su>=1)){toast('Starting U must be 1 or more.',1);return false}
     if(!(hu>=1)){toast('Height must be 1 U or more.',1);return false}
     if(su+hu-1>r.height){toast('Does not fit — the rack is '+r.height+'U.',1);return false}
@@ -715,6 +728,7 @@ function addDevice(rackId,preset,atU){
       fw:v[12].trim(),vlan:v[13].trim(),mgmt:v[14].trim(),warranty:v[15].trim(),notes:v[16].trim(),removable:kind==='patch'?v[17]:'',numbering:v[18]||''};
     S.devices.push(d);
     for(var n=1;n<=pc;n++)S.ports.push({id:uid(),devId:d.id,num:n,label:''});
+    if(SFP_KINDS[kind])setSfp(d,parseInt(v[19],10)||0);
     if(setting('autoLabel')){if(!d.label)d.label=fillTpl(setting('devTpl'),d);
       portsOf(d.id).forEach(function(p){p.label=fillTpl(setting('portTpl'),d,p)})}
     ui.dev=d.id;commit()},function(){
@@ -754,12 +768,16 @@ function editDevice(d){modal('Device: '+dn(d),[
   {label:'Warranty ends',type:'date',value:d.warranty||''},
   {label:'Notes',value:d.notes||''},
   {label:'Patch panel jacks (patch panels only)',options:JACK_OPTS,value:d.removable||''},
-  {label:'Port numbering (devices with more than 24 ports)',options:NUM_OPTS,value:d.numbering||''}],
+  {label:'Port numbering (devices with more than 24 ports)',options:NUM_OPTS,value:d.numbering||''},
+  {label:'SFP+ ports (switches, routers, firewalls — separate from the ports above)',type:'number',value:d.sfp||0}],
   function(v){
     var kind=v[0],su=parseInt(v[3],10),hu=parseInt(v[4],10),pc=parseInt(v[5],10),r=rackOfDevice(d);
     if(!v[1].trim()){toast('Give the device a name.',1);return false}
     if(!(su>=1&&hu>=1)){toast('U values must be 1 or more.',1);return false}
     if(!portCheck(kind,pc,hu))return false;
+    var sf=SFP_KINDS[kind]?(parseInt(v[19],10)||0):0;if(sf<0||sf>8){toast('SFP+ ports must be between 0 and 8.',1);return false}
+    if(sf<(d.sfp||0)){var lostS=sfpOf(d.id).filter(function(p){return p.num>sf}),cabS=lostS.filter(function(p){return cableOf(p.id)||homerunOf(p.id)}).length;
+      if(!confirm('Remove '+lostS.length+' SFP+ port'+(lostS.length===1?'':'s')+(cabS?' and the '+cabS+' cable'+(cabS===1?'':'s')+' plugged into them':'')+'?'))return false}
     if(su+hu-1>r.height){toast('Does not fit — the rack is '+r.height+'U.',1);return false}
     var clash=S.devices.filter(function(x){return x!==d&&x.rackId===d.rackId&&su<=x.startU+x.heightU-1&&x.startU<=su+hu-1})[0];
     if(clash){toast('Overlaps '+dn(clash)+'.',1);return false}
@@ -779,7 +797,7 @@ function editDevice(d){modal('Device: '+dn(d),[
     }
     d.kind=kind;d.name=v[1].trim();d.label=v[2].trim();d.startU=su;d.heightU=hu;d.portCount=pc;d.color=v[6]||'';
     d.ip=v[7].trim();d.asset=v[8].trim();d.serial=v[9].trim();d.model=v[10].trim();d.mac=v[11].trim();
-    d.fw=v[12].trim();d.vlan=v[13].trim();d.mgmt=v[14].trim();d.warranty=v[15].trim();d.notes=v[16].trim();d.removable=kind==='patch'?v[17]:'';d.numbering=v[18]||'';
+    d.fw=v[12].trim();d.vlan=v[13].trim();d.mgmt=v[14].trim();d.warranty=v[15].trim();d.notes=v[16].trim();d.removable=kind==='patch'?v[17]:'';d.numbering=v[18]||'';if(sf!==(d.sfp||0))setSfp(d,sf);
     commit()})}
 
 function placePicked(rid,u){var i=window.__tplPick;if(i==null||!PRESETS[i])return false;var pr=PRESETS[i],top=Math.min(u,byId(S.racks,rid).height-pr.h+1);
@@ -800,7 +818,7 @@ function delDevice(id,quiet){
 function editPort(pid){
   var p=byId(S.ports,pid);if(!p)return;
   var c=cableOf(pid),hr=homerunOf(pid),pw=powerOf(pid),partner=c?byId(S.ports,c.a===pid?c.b:c.a):null,d=deviceOfPort(p);
-  var info=d?'<p class="muted" style="margin:2px 0 8px">'+esc(dn(d))+' · port '+p.num+(c?' · cable: '+esc(cn(c)):hr?' · homerun: '+esc(hr.label||'(no label)'):pw?' · powers '+esc(dn(byId(S.devices,pw.dev)||{name:'?'})):' · not connected')+'</p>':'';
+  var info=d?'<p class="muted" style="margin:2px 0 8px">'+esc(dn(d))+' · '+pWord(p).toLowerCase()+(c?' · cable: '+esc(cn(c)):hr?' · homerun: '+esc(hr.label||'(no label)'):pw?' · powers '+esc(dn(byId(S.devices,pw.dev)||{name:'?'})):' · not connected')+'</p>':'';
   modal('Port '+pn(p)+'',[{label:'Port label',value:p.label},{label:'Port color',options:CABLE_COLORS,value:p.color||''},{label:'Room this jack serves',value:p.room||''}],function(v){p.label=v[0].trim();p.color=v[1];p.room=v[2].trim();commit()},function(){
     roomFieldSetup(p);
     var box=el('mbox');
@@ -828,7 +846,7 @@ function editPort(pid){
     sw.querySelectorAll('.swb').forEach(function(b){b.onclick=function(){el('f1').value=b.getAttribute('data-c');paintSw();el('f0').focus()}});
     paintSw();
     // step through the ports of this device: Tab / Shift+Tab or the buttons save this label and open the next/previous port
-    var sib=portsOf(p.devId).slice().sort(function(a,b){return a.num-b.num}),ix=sib.indexOf(p);
+    var sib=famOf(p).slice().sort(function(a,b){return a.num-b.num}),ix=sib.indexOf(p);
     var nav=document.createElement('div');nav.className='row';nav.style.marginTop='10px';
     nav.innerHTML='<button id="pprev"'+(ix<=0?' disabled':'')+'>← Save &amp; previous</button><button id="pnext" class="pri"'+(ix<0||ix>=sib.length-1?' disabled':'')+'>Save &amp; next →</button>'+
       '<span class="muted" style="font-size:12px">Port '+(ix+1)+' of '+sib.length+' · Tab = next, Shift+Tab = previous</span>';
@@ -973,27 +991,27 @@ function quickConnect(pid){
   var p=byId(S.ports,pid);if(!p)return;
   if(!portFree(p)&&!(isFib(p)&&!trunkOf(pid))){toast('That port is already connected.',1);return}
   var src=deviceOfPort(p),sr=src&&rackOfDevice(src);
-  var others=S.devices.filter(function(d){return d.id!==p.devId&&portsOf(d.id).some(function(x){return canLink(p,x)})});
+  var others=S.devices.filter(function(d){return d.id!==p.devId&&portsOf(d.id).concat(sfpOf(d.id)).some(function(x){return canLink(p,x)})});
   if(!others.length){toast('No other device has a free port.',1);return}
   var want=src&&src.kind==='patch'?'switch':src&&src.kind==='switch'?'patch':'';
   function sc(d){var r=rackOfDevice(d);return (r&&sr&&r.id===sr.id?0:4)+(want&&d.kind===want?0:2)+(d.id===qc.dev?-1:0)}
   others.sort(function(a,b){return sc(a)-sc(b)||dn(a).localeCompare(dn(b))});
   function where(d){var r=rackOfDevice(d),l=r&&locOfRack(r);return (l?locFull(l)+' / ':'')+(r?r.name+' / ':'')+dn(d)}
-  function free(did){return portsOf(did).filter(function(x){return canLink(p,x)}).sort(function(a,b){return a.num-b.num})}
-  function pick(did){var f=free(did),after=f.filter(function(x){return did===qc.dev&&x.num>qc.num})[0]||f[0];return after?after.id:''}
+  function free(did){return portsOf(did).filter(function(x){return canLink(p,x)}).concat(sfpOf(did).filter(function(x){return canLink(p,x)}))}
+  function pick(did){var f=free(did),after=f.filter(function(x){return did===qc.dev&&!x.sfp===!qc.sfp&&x.num>qc.num})[0]||f.filter(function(x){return !x.sfp===!p.sfp})[0]||f[0];return after?after.id:''}
   var first=others[0];
   modal('Connect '+pn(p)+' to…',[{label:'Device',options:others.map(function(d){return [d.id,where(d)]}),value:first.id},
-    {label:'Port (next free one is picked for you)',options:free(first.id).map(function(x){return [x.id,'Port '+x.num+(x.label?' — '+x.label:'')]}),value:pick(first.id)}],
+    {label:'Port (next free one is picked for you)',options:free(first.id).map(function(x){return [x.id,pWord(x)+(x.label?' — '+x.label:'')]}),value:pick(first.id)}],
     function(v){if(!v[1]){toast('That device has no free ports.',1);return false}
-      var q=byId(S.ports,v[1]);link(p,q);qc.dev=q.devId;qc.num=q.num;commit()},
+      var q=byId(S.ports,v[1]);link(p,q);qc.dev=q.devId;qc.num=q.num;qc.sfp=!!q.sfp;commit()},
     function(){
-      function fill(){var f=free(el('f0').value);el('f1').innerHTML=f.map(function(x){return '<option value="'+x.id+'">Port '+x.num+(x.label?' — '+esc(x.label):'')+'</option>'}).join('');el('f1').value=pick(el('f0').value)}
+      function fill(){var f=free(el('f0').value);el('f1').innerHTML=f.map(function(x){return '<option value="'+x.id+'">'+pWord(x)+(x.label?' — '+esc(x.label):'')+'</option>'}).join('');el('f1').value=pick(el('f0').value)}
       el('f0').onchange=fill;
       // next jack on the same panel/switch that has nothing plugged in
-      var sib=portsOf(p.devId).slice().sort(function(a,b){return a.num-b.num}).filter(function(x){return x.num>p.num&&!cableOf(x.id)&&!homerunOf(x.id)&&!powerOf(x.id)}),nx=sib[0];
-      var b=document.createElement('button');b.className='pri';b.textContent=nx?'Connect & next jack ('+nx.num+') →':'Connect (last jack)';
+      var sib=famOf(p).slice().sort(function(a,b){return a.num-b.num}).filter(function(x){return x.num>p.num&&!cableOf(x.id)&&!homerunOf(x.id)&&!powerOf(x.id)}),nx=sib[0];
+      var b=document.createElement('button');b.className='pri';b.textContent=nx?'Connect & next jack ('+(nx.sfp?'SFP+ ':'')+nx.num+') →':'Connect (last jack)';
       b.onclick=function(){var v=el('f1').value;if(!v){toast('That device has no free ports.',1);return}
-        var q=byId(S.ports,v);link(p,q);qc.dev=q.devId;qc.num=q.num;save();render();
+        var q=byId(S.ports,v);link(p,q);qc.dev=q.devId;qc.num=q.num;qc.sfp=!!q.sfp;save();render();
         if(nx)quickConnect(nx.id);else{el('modal').style.display='none';toast('Connected.')}};
       el('mok').parentNode.insertBefore(b,el('mok'))})}
 
@@ -1007,7 +1025,7 @@ function armShow(){var p=byId(S.ports,arm);if(!p){armStop();return}
   armBar.innerHTML='<span>Now click the port to connect <b>'+esc(pn(p))+'</b> to</span><button id="armSkip">Skip this port</button><button id="armX">Done</button>';
   armBar.querySelector('#armX').onclick=function(e){e.stopPropagation();armStop()};
   armBar.querySelector('#armSkip').onclick=function(e){e.stopPropagation();armNext(p)}}
-function armNext(p){var n=portsOf(p.devId).filter(function(x){return x.num>p.num&&portFree(x)}).sort(function(a,b){return a.num-b.num})[0];
+function armNext(p){var n=famOf(p).filter(function(x){return x.num>p.num&&portFree(x)}).sort(function(a,b){return a.num-b.num})[0];
   if(n){arm=n.id;armShow()}else armStop('That was the last free port.')}
 document.addEventListener('click',function(e){
   if(!arm)return;if(armBar&&armBar.contains(e.target))return;
@@ -1151,8 +1169,8 @@ function switchOpts(rid){return S.devices.filter(function(d){return d.rackId===r
 var PRESETS=[{name:'24-port patch panel',kind:'patch',ports:24,h:1},
   {name:'48-port patch panel (2U)',kind:'patch',ports:48,h:2},
   {name:'96-port patch panel (4U)',kind:'patch',ports:96,h:4},
-  {name:'24-port switch',kind:'switch',ports:24,h:1},
-  {name:'48-port switch',kind:'switch',ports:48,h:1},
+  {name:'24-port switch',kind:'switch',ports:24,h:1,sfp:4},
+  {name:'48-port switch',kind:'switch',ports:48,h:1,sfp:4},
   {name:'12-port fiber panel',kind:'fiber',ports:12,h:1},{name:'24-port fiber panel',kind:'fiber',ports:24,h:1},
   {name:'Router',kind:'router',ports:8,h:1},{name:'Firewall',kind:'firewall',ports:8,h:1},
   {name:'Server (2U)',kind:'server',ports:4,h:2},{name:'UPS (1U)',kind:'ups',ports:6,h:1},
@@ -1167,6 +1185,7 @@ function createFromPreset(rackId,pr,su){
     color:pr.color||'',ip:'',asset:'',serial:'',model:'',mac:'',fw:'',vlan:'',mgmt:'',warranty:'',notes:''};
   S.devices.push(d);
   for(var n=1;n<=d.portCount;n++)S.ports.push({id:uid(),devId:d.id,num:n,label:''});
+  if(pr.sfp&&SFP_KINDS[pr.kind])setSfp(d,pr.sfp);
   if(setting('autoLabel')){if(!d.label)d.label=fillTpl(setting('devTpl'),d);
     portsOf(d.id).forEach(function(p){p.label=fillTpl(setting('portTpl'),d,p)})}
   commit();toast('Added '+d.name+' at U'+su+(d.heightU>1?'–'+(su+d.heightU-1):'')+'. Click it to rename or add details.')}
@@ -1580,7 +1599,7 @@ function renderRack(){
       '<text x="'+(x+(real?20:10))+'" y="'+(y+40)+'" font-size="11" fill="#fff" fill-opacity=".85">'+kN(d.kind)+(d.portCount?' · '+portsTxt(d):'')+' · U'+d.startU+(d.heightU>1?'–'+(d.startU+d.heightU-1):'')+(d.ip?' · '+esc(d.ip):'')+'</text>'+(d.kind==='patch'&&d.removable==='yes'&&h>=52?'<text x="'+(x+(real?20:10))+'" y="'+(y+56)+'" font-size="11" fill="#fff" fill-opacity=".85">Removable jacks</text>':'')+
       '<title>'+esc(nm)+' — click to open</title></g>';
     var ax=x+186,aw=w-196,GS=6,GAP=real?9:0,ngap=Math.max(0,Math.ceil(cols/GS)-1);
-    var sfpW=real&&d.kind==='switch'&&aw>360?64:0;aw-=sfpW;
+    var sfpP=sfpOf(d.id),sfpN=sfpP.length,sfpCols=Math.ceil(sfpN/2),sfpW=sfpN?Math.max(64,sfpCols*31+10):0;aw-=sfpW;
     var cell=Math.min(36,(aw-ngap*GAP)/cols);
     function gx(ci){return ci*cell+Math.floor(ci/GS)*GAP}
     var labCol=real?bodyCol:col;
@@ -1609,10 +1628,16 @@ function renderRack(){
       else if(d.kind!=='switch'&&d.kind!=='patch'){ // router, firewall, other: status LEDs + vents
         dk+=led(x+22,y+h-12,'#3fdc6e')+led(x+30,y+h-12,d.kind==='firewall'?'#f5a524':'#3fdc6e')+vents(Math.max(pe,x+w*0.62),re,y+12,y+h-12,7)}
       faces+='<g pointer-events="none">'+dk+'</g>'}
-    if(sfpW){var sx0=x+w-14-sfpW-2,sw2=(sfpW-10)/2,sh=Math.min(16,(h-30)/2);
-      for(var si=0;si<4;si++){var sxx=sx0+5+(si%2)*(sw2+2),syy=y+h/2-sh-1+Math.floor(si/2)*(sh+2);
-        faces+='<rect x="'+sxx+'" y="'+syy+'" width="'+sw2+'" height="'+sh+'" fill="#0a0b0d" stroke="#aab2bc" stroke-width="1.2" pointer-events="none"/>'}
-      faces+='<text x="'+(sx0+sfpW/2)+'" y="'+(y+h/2-sh-5)+'" font-size="8" fill="#8b93a0" text-anchor="middle" pointer-events="none">SFP+</text>'}
+    // SFP+ cages: real ports (own numbering, odd on top), drawn at the right end of the faceplate
+    if(sfpN){var sx0=x+w-14-sfpW-2,sRows=sfpN>1?2:1,scw=Math.min(28,(sfpW-10)/sfpCols-3),sch=Math.min(16,(Math.min(h,80)-30)/2),sMid=y+Math.min(h,80)/2+4;
+      faces+='<text x="'+(sx0+sfpW/2)+'" y="'+(sMid-(sRows===2?sch:sch/2)-5)+'" font-size="8" fill="#8b93a0" text-anchor="middle" pointer-events="none">SFP+</text>';
+      sfpP.forEach(function(p){var k=p.num-1,sc=Math.floor(k/sRows),sr=sRows===2?k%2:0,scx=sx0+5+sc*(scw+3)+scw/2,scy=sRows===2?sMid+(sr===0?-1-sch/2:1+sch/2):sMid;
+        var used=!!(cableOf(p.id)||homerunOf(p.id)),pc0=p.color||'';
+        pos[p.id]={x:scx,y:scy,psz:sch,dev:d.id,dir:sr===0?'u':'d',cw:scw};
+        portg+='<g class="pt sfp" data-p="'+p.id+'"><rect x="'+(scx-scw/2)+'" y="'+(scy-sch/2)+'" width="'+scw+'" height="'+sch+'" rx="1.5" fill="'+(pc0||(used?'#16a34a':'#0a0b0d'))+'" stroke="'+(used?'#fff':'#aab2bc')+'" stroke-width="'+(used?1.8:1.2)+'"/>'+
+          '<text x="'+scx+'" y="'+(scy+3)+'" font-size="8" fill="'+(pc0?inkFor(pc0):'#cbd5e1')+'" text-anchor="middle" pointer-events="none">'+p.num+'</text>'+
+          (ISX[p.id]?'<circle class="isdot" cx="'+(scx+scw/2-1)+'" cy="'+(scy-sch/2+1)+'" r="3.5" fill="#ef4444" stroke="#fff" stroke-width="1.2" pointer-events="none"/>':'')+
+          '<title>'+esc(pn(p)+(p.label?' — '+p.label:'')+(used?'':' — free'))+'</title></g>'})}
     var areaTop=y+(rows===1?8:14),areaH=rows===1?34:(h-28),rowH=areaH/rows;
     var psz=Math.min(cell-6,rowH-4,26);
     // two-row devices (48 ports in 1U): smaller ports with the label on its own line under each one,
@@ -1959,12 +1984,15 @@ function renderDevice(){
     '<div class="row"><button id="ed">Edit device</button>'+(d.kind==='patch'?'<span class="muted">Jacks:</span><select id="jk">'+JACK_OPTS.map(function(o){return '<option value="'+o[0]+'"'+((d.removable||'')===o[0]?' selected':'')+'>'+esc(o[1])+'</option>'}).join('')+'</select>':'')+'<button id="bulk" class="pri">Bulk label ports</button><button id="bpaste">Paste labels…</button>'+(d.kind==='patch'?'<button id="bauto">Auto-patch to switch…</button>':'')+(d.kind==='switch'?'<button id="bhr">Bulk homeruns…</button>':'')+(d.kind==='fiber'?'<button id="bfib" class="pri">Connect strands to another closet…</button>':'')+
     '<button id="plab">Print these port labels</button><button data-qr="dev:'+d.id+'" title="QR code that opens this device">QR code</button><button id="dIss">Report a problem</button><button class="dng" id="del">Delete device</button></div>'+
     '<p class="muted">Click a port to label it, colour-code it or connect a cable. A green outline means a cable is connected.</p>'+issueStrip('dev',d.id)+'<div class="ports">';
-  ports.forEach(function(p){
+  function tileOf(p){var h='';
     var c=cableOf(p.id)||homerunOf(p.id)||powerOf(p.id),hr=homerunOf(p.id),pw=powerOf(p.id),o=cableOf(p.id)?byId(S.ports,cableOf(p.id).a===p.id?cableOf(p.id).b:cableOf(p.id).a):null;
     var pcc=p.color||'',pk=portCode(p);
-    h+='<div class="port'+(c||trunkOf(p.id)?' used':'')+(ISX[p.id]?' iss':'')+(ui.flashPort===p.id?' flash':'')+'" data-p="'+p.id+'"'+(pcc?' title="'+esc(pk[1]+' — '+pk[2])+'" style="background:'+pcc+';color:'+inkFor(pcc)+'"':'')+'><b>'+p.num+'</b>'+esc(p.label||'')+
-      '<div class="muted" style="font-size:10px'+(pcc?';color:inherit;opacity:.85':'')+'">'+(o?'→ '+esc(pn(o)):hr?'⇣ '+esc(hr.label||'homerun'):pw?'⚡ '+esc(dn(byId(S.devices,pw.dev)||{name:'?'})):'')+(function(){var tk=trunkOf(p.id),t2=tk&&byId(S.ports,tk.a===p.id?tk.b:tk.a);return t2?'<div style="font-size:10px;color:var(--accent)">⇄ '+esc(pn(t2))+'</div>':''})()+'</div></div>'});
-  h+='</div>'+deviceDetails(d);
+    h+='<div class="port'+(c||trunkOf(p.id)?' used':'')+(ISX[p.id]?' iss':'')+(ui.flashPort===p.id?' flash':'')+'" data-p="'+p.id+'"'+(pcc?' title="'+esc(pk[1]+' — '+pk[2])+'" style="background:'+pcc+';color:'+inkFor(pcc)+'"':'')+'><b>'+(p.sfp?'SFP+ '+p.num:p.num)+'</b>'+esc(p.label||'')+
+      '<div class="muted" style="font-size:10px'+(pcc?';color:inherit;opacity:.85':'')+'">'+(o?'→ '+esc(pn(o)):hr?'⇣ '+esc(hr.label||'homerun'):pw?'⚡ '+esc(dn(byId(S.devices,pw.dev)||{name:'?'})):'')+(function(){var tk=trunkOf(p.id),t2=tk&&byId(S.ports,tk.a===p.id?tk.b:tk.a);return t2?'<div style="font-size:10px;color:var(--accent)">⇄ '+esc(pn(t2))+'</div>':''})()+'</div></div>';return h}
+  ports.forEach(function(p){h+=tileOf(p)});
+  var sfps=sfpOf(d.id);
+  h+='</div>'+(sfps.length?'<h3 style="margin:16px 0 6px">SFP+ ports <span class="muted" style="font-weight:400;font-size:13px">'+sfps.length+' cage'+(sfps.length===1?'':'s')+' · separate from the '+d.portCount+' ports above</span></h3><div class="ports sfps">'+sfps.map(tileOf).join('')+'</div>':
+    (SFP_KINDS[d.kind]?'<p class="muted" style="font-size:13px">No SFP+ ports. Add them with <b>Edit device</b> → SFP+ ports.</p>':''))+deviceDetails(d);
   var cs=S.cables.filter(function(c){return byId(S.ports,c.a).devId===d.id||byId(S.ports,c.b).devId===d.id});
   h+='<div class="card"><b>Cables on this device</b>';
   var hs=S.homeruns.filter(function(x){var q=byId(S.ports,x.port);return q&&q.devId===d.id});
@@ -2032,7 +2060,7 @@ function renderMap(){
     for(u=1;u<=r.height;u++){inner+='<div class="un" style="top:'+((r.height-u)*U)+'px;line-height:'+U+'px">'+u+'</div>';
       if(isFree(r.id,u))inner+='<div class="slot" data-r="'+r.id+'" data-u="'+u+'" style="top:'+((r.height-u)*U)+'px;height:'+U+'px;line-height:'+U+'px" title="Add a device at U'+u+'">+ Add at U'+u+'</div>'}
     devs.forEach(function(d){
-      var used=S.ports.filter(function(p){return p.devId===d.id&&(cableOf(p.id)||homerunOf(p.id)||powerOf(p.id))}).length;
+      var used=S.ports.filter(function(p){return p.devId===d.id&&!p.sfp&&(cableOf(p.id)||homerunOf(p.id)||powerOf(p.id))}).length;
       inner+='<div class="dev" data-d="'+d.id+'" style="background:'+deviceColor(d)+';top:'+((r.height-(d.startU+d.heightU-1))*U+1)+'px;height:'+(d.heightU*U-2)+'px;line-height:'+(d.heightU*U-4)+'px">'+
         esc(dn(d))+' <span style="opacity:.7">('+used+'/'+d.portCount+')</span>'+
         (d.ip||d.asset?'<div style="font-size:9px;opacity:.85;line-height:1.1">'+esc([d.ip,d.asset].filter(Boolean).join(' · '))+'</div>':'')+'</div>'});
@@ -2083,7 +2111,7 @@ function renderSide(){
   h+='<div class="sideSec"><button class="fold" id="fT" aria-expanded="'+tOpen+'"><span class="car">▶</span>Device templates</button>';
   if(tOpen){h+='<p class="muted" style="font-size:12px;margin:0 4px 6px">'+(COARSE?'Tap one, then tap an empty slot in Rack view (or drag it there).':'Drag onto a rack in Rack view.')+'</p>';
     PRESETS.forEach(function(pr,i){
-      h+='<div class="tpl'+(window.__tplPick===i?' picked':'')+'" draggable="true" data-pi="'+i+'" style="border-left-color:'+deviceColor({kind:pr.kind,color:pr.color})+'"><span>'+esc(pr.name)+'</span><small>'+pr.h+'U'+(pr.ports?' · '+pr.ports:'')+'</small></div>'})}
+      h+='<div class="tpl'+(window.__tplPick===i?' picked':'')+'" draggable="true" data-pi="'+i+'" style="border-left-color:'+deviceColor({kind:pr.kind,color:pr.color})+'"><span>'+esc(pr.name)+'</span><small>'+pr.h+'U'+(pr.ports?' · '+pr.ports:'')+(pr.sfp?'+'+pr.sfp+' SFP':'')+'</small></div>'})}
   h+='</div><div class="sideSec"><button class="fold" id="fC" aria-expanded="'+cOpen+'"><span class="car">▶</span>Port colours</button>';
   if(cOpen)h+=CABLE_CODES.map(function(k){return '<div class="sw" title="'+(codeIsRoom(k)?'Labelled with rooms':'A device, not a room')+'"><i style="background:'+k[0]+'"></i>'+esc(k[1])+' <span style="color:var(--faint)">'+esc(k[2])+(codeIsRoom(k)?'':' · not a room')+'</span></div>'}).join('')+'<button id="palEd" style="margin:6px 0 4px">Edit colours…</button>';
   h+='</div><div class="sideFoot"><div id="bkp"></div><div id="appfoot" style="padding:8px 0 0">v'+APP_VERSION+'</div></div>';
@@ -2331,7 +2359,7 @@ function optimise(r){
   var linkOf={},cordCol={};links.forEach(function(l){linkOf[l.pj.id]=l;cordCol[l.c.id]=colorOf(l)});
   function pcol(p){var c=cableOf(p.id),h=homerunOf(p.id);if(c&&cordCol[c.id])return cordCol[c.id];if(h)return h.color||'#9ca3af';return jcol(p)||(c?'#9ca3af':'')}
   var finDev={},finNum={},virt={};
-  S.ports.forEach(function(p){var d=deviceOfPort(p);if(d&&d.rackId===r.id){finDev[p.id]=d.id;finNum[p.id]=p.num}});
+  S.ports.forEach(function(p){if(p.sfp)return;var d=deviceOfPort(p);if(d&&d.rackId===r.id){finDev[p.id]=d.id;finNum[p.id]=p.num}});
   function vports(d){if(!d.virtual)return portsOf(d.id);if(!virt[d.id]){virt[d.id]=[];for(var n=1;n<=d.portCount;n++){var q={id:'v:'+d.id+':'+n,devId:d.id,num:n,label:'',color:''};virt[d.id].push(q);finDev[q.id]=d.id;finNum[q.id]=n}}return virt[d.id]}
   var pps=devs.filter(function(d){return d.kind==='patch'}),sws=devs.filter(function(d){return d.kind==='switch'}),att={},attDir={},adds=[];
   // 1) give every switch its panels: one above, one below, as many as its ports can take (24-port panels on a 48-port switch = 2)
@@ -2387,7 +2415,7 @@ function optimise(r){
   // 4) moves + pictures
   var dm=[],jm=[],sm=[],hm=[],now={},opt={},mv={};
   devs.forEach(function(d){now[d.id]={};opt[d.id]={};mv[d.id]={};if(!d.virtual&&U(d)!==d.startU)dm.push({d:d,from:d.startU,to:U(d)})});
-  S.ports.forEach(function(p){var d=deviceOfPort(p);if(!d||d.rackId!==r.id)return;var col=pcol(p);if(col)now[d.id][p.num]=col;
+  S.ports.forEach(function(p){if(p.sfp)return;var d=deviceOfPort(p);if(!d||d.rackId!==r.id)return;var col=pcol(p);if(col)now[d.id][p.num]=col;
     if(d.kind==='patch'){var moved=finDev[p.id]!==p.devId||finNum[p.id]!==p.num;
       if(col)opt[finDev[p.id]][finNum[p.id]]=col;if(moved){if(col)mv[finDev[p.id]][finNum[p.id]]=true;jm.push({port:p,from:p.num,fromDev:p.devId,to:finNum[p.id],toDev:finDev[p.id]})}}
     else if(d.kind==='switch'){var c=cableOf(p.id),hh=homerunOf(p.id);if(col&&!(c&&moving[c.id]&&res[c.id])&&!(hh&&hrMoving[p.id]))opt[d.id][p.num]=col}
@@ -3749,7 +3777,7 @@ function applyPlan(r){var oc=optimise(r),idMap={},n=0;function D(id){return idMa
     S.ports.filter(function(p){return p.devId===d.id}).forEach(function(p){(by[p.num]=by[p.num]||[]).push(p)});
     Object.keys(by).forEach(function(k){var ps=by[k];if(ps.length<2)return;ps.sort(function(a,b){return (jackInUse(b)?1:0)-(jackInUse(a)?1:0)});
       ps.slice(1).forEach(function(p){if(!jackInUse(p)&&!trunkOf(p.id))S.ports=S.ports.filter(function(x){return x!==p})})});
-    for(var k=1;k<=d.portCount;k++)if(!S.ports.some(function(p){return p.devId===d.id&&p.num===k}))S.ports.push({id:uid(),devId:d.id,num:k,label:''})});
+    for(var k=1;k<=d.portCount;k++)if(!S.ports.some(function(p){return p.devId===d.id&&!p.sfp&&p.num===k}))S.ports.push({id:uid(),devId:d.id,num:k,label:''})});
   oc.hmoves.forEach(function(m){var hj=oc.hjs.filter(function(x){return x.hr===m.h})[0];if(!hj)return;
     var q=S.ports.filter(function(p){return p.devId===D(oc.fin.dev[hj.id])&&p.num===oc.fin.num[hj.id]})[0],sp=portsOf(m.swTo.id).filter(function(p){return p.num===m.to})[0];if(!q||!sp)return;
     q.label=m.h.label||'';q.color=m.h.color||'';if(m.h.room)q.room=m.h.room;
