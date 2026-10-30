@@ -389,6 +389,7 @@ if(!Array.isArray(S.homeruns))S.homeruns=[];
 if(!Array.isArray(S.sites))S.sites=[];
 if(!Array.isArray(S.power))S.power=[];
 if(!S.settings||typeof S.settings!=='object')S.settings={};
+migrateSfp(S);
 var PORTS=[['24','24 ports'],['48','48 ports']];
 var DEV_COLORS=[['','Default for kind'],['#2563eb','Blue'],['#0891b2','Cyan'],['#16a34a','Green'],['#65a30d','Lime'],
   ['#d97706','Orange'],['#dc2626','Red'],['#db2777','Pink'],['#7c3aed','Purple'],['#0f766e','Teal'],
@@ -405,7 +406,7 @@ function kindRow(k){for(var i=0;i<DEVICE_KINDS.length;i++)if(DEVICE_KINDS[i][0]=
 function kindOpts(){return DEVICE_KINDS.map(function(k){return [k[0],k[1]]})}
 function portsTxt(d){return (d.portCount?d.portCount+(d.kind==='pdu'||d.kind==='ups'?' outlets':' ports'):(d.kind==='pdu'||d.kind==='ups'?'no outlets':'no ports'))+(d.sfp?' + '+d.sfp+' SFP+':'')}
 function deviceColor(d){return d.color||DEV_FALLBACK[d.kind]||'#2563eb'}
-var APP_VERSION='4.0.5'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
+var APP_VERSION='4.0.6'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
 
 var Q='"'; // double-quote char used when building the cable rows on the Labels tab
 function siteFold(){var c={};(S.sites||[]).forEach(function(st,i){if(i>0)c[st.id]=true});return c}
@@ -472,7 +473,7 @@ function showLocked(k,j){
   el('lkKeep').onclick=function(){hideLocked();fs.state='on';writeNow(true)}}
 function hideLocked(){var o=el('lockov');if(o)o.remove()}
 function loadFileJ(j){if(!Array.isArray(j.ports))j.ports=[];if(!Array.isArray(j.cables))j.cables=[];if(!Array.isArray(j.homeruns))j.homeruns=[];if(!Array.isArray(j.sites))j.sites=[];if(!Array.isArray(j.power))j.power=[];if(!j.settings)j.settings={};
-  absorbPhotos(j);delete j.exportedAt;delete j.lock;S=j;trackUndo.quiet=1;ui.loc=S.locations.length?S.locations[0].id:null;ui.rack=null;ui.dev=null;ui.view='map';ui.zoom=null;ui.collapsed=siteFold();fs.at=S.savedAt;commit()}
+  absorbPhotos(j);delete j.exportedAt;delete j.lock;migrateSfp(j);S=j;trackUndo.quiet=1;ui.loc=S.locations.length?S.locations[0].id:null;ui.rack=null;ui.dev=null;ui.view='map';ui.zoom=null;ui.collapsed=siteFold();fs.at=S.savedAt;commit()}
 setInterval(function(){if(!fs.h||fs.state!=='on')return;readFileJ().then(function(j){var k=foreignLock(j);if(k)showLocked(k,j);else writeNow(true)}).catch(function(){})},30000);
 function scheduleFileWrite(){if(!fs.h)return;clearTimeout(fs.timer);fs.timer=setTimeout(writeNow,500)}
 function writeNow(force){
@@ -494,7 +495,7 @@ function syncWithFile(writeAfter){
         (empty?' and this browser is empty.':' that is newer than what is in this browser.')+
         '\n\nOK = load that backup into the app (the file stays as it is).\nCancel = keep what is here and overwrite the file.')){
         if(!Array.isArray(j.ports))j.ports=[];if(!Array.isArray(j.cables))j.cables=[];if(!Array.isArray(j.homeruns))j.homeruns=[];if(!Array.isArray(j.sites))j.sites=[];if(!Array.isArray(j.power))j.power=[];if(!j.settings)j.settings={};
-        absorbPhotos(j);delete j.exportedAt;delete j.lock;S=j;trackUndo.quiet=1;ui.loc=S.locations.length?S.locations[0].id:null;ui.rack=null;ui.dev=null;ui.view='map';ui.zoom=null;ui.collapsed=siteFold();
+        absorbPhotos(j);delete j.exportedAt;delete j.lock;migrateSfp(j);S=j;trackUndo.quiet=1;ui.loc=S.locations.length?S.locations[0].id:null;ui.rack=null;ui.dev=null;ui.view='map';ui.zoom=null;ui.collapsed=siteFold();
         fs.state='on';fs.at=S.savedAt;commit();return}}
     if(writeAfter)return writeNow();
   }).catch(function(){if(writeAfter)return writeNow()})}
@@ -548,7 +549,11 @@ function setSfp(d,n){var have=sfpOf(d.id);n=Math.max(0,n|0);
     S.cables=S.cables.filter(function(c){return ids.indexOf(c.a)<0&&ids.indexOf(c.b)<0});S.homeruns=S.homeruns.filter(function(h){return ids.indexOf(h.port)<0});
     S.ports=S.ports.filter(function(p){return ids.indexOf(p.id)<0})}
   for(var k=have.length+1;k<=n;k++)S.ports.push({id:uid(),devId:d.id,num:k,label:'',sfp:true});
-  if(n)d.sfp=n;else delete d.sfp}
+  d.sfp=n}
+// every switch gets 4 SFP+ cages unless it has been given a number (0 included); the ids are fixed so two devices doing this agree
+function migrateSfp(j){if(!j||!Array.isArray(j.devices)||!Array.isArray(j.ports))return j;
+  j.devices.forEach(function(d){if(d.kind!=='switch'||d.sfp!=null)return;d.sfp=4;
+    for(var k=1;k<=4;k++){var id=d.id+'-sfp'+k;if(!j.ports.some(function(p){return p.id===id}))j.ports.push({id:id,devId:d.id,num:k,label:'',sfp:true})}});return j}
 function pad2(n){return String(n).length<2?'0'+n:String(n)}
 
 // ---- templates
@@ -711,7 +716,8 @@ function addDevice(rackId,preset,atU){
     {label:'Notes',value:''},
     {label:'Patch panel jacks (patch panels only)',options:JACK_OPTS,value:preset&&preset.removable||''},
     {label:'Port numbering (devices with more than 24 ports)',options:NUM_OPTS,value:''},
-    {label:'SFP+ ports (switches, routers, firewalls — separate from the ports above)',type:'number',value:preset&&preset.sfp!=null?preset.sfp:0}];
+    {label:'SFP+ ports (switches, routers, firewalls — separate from the ports above)',type:'number',value:preset?(preset.sfp||0):4}];
+  setTimeout(function(){var k=el('f0'),sf=el('f19'),typed=false;if(!k||!sf)return;sf.addEventListener('input',function(){typed=true});k.addEventListener('change',function(){if(!typed)sf.value=k.value==='switch'?4:0})},0);
   modal('Add device to '+r.name+(atU?' at U'+atU:''),f,function(v){
     var kind=v[0],pc=parseInt(v[3],10),su=parseInt(v[4],10),hu=parseInt(v[5],10);
     if(!v[1].trim()){toast('Give the device a name.',1);return false}
@@ -2798,7 +2804,7 @@ el('file').onchange=function(e){
     if(!Array.isArray(j.cables))j.cables=[];if(!Array.isArray(j.homeruns))j.homeruns=[];if(!Array.isArray(j.sites))j.sites=[];if(!Array.isArray(j.power))j.power=[];
     if(!j.settings)j.settings={};
     absorbPhotos(j);delete j.exportedAt;delete j.lock;
-    S=j;trackUndo.quiet=1;ui.loc=S.locations.length?S.locations[0].id:null;ui.rack=null;ui.dev=null;ui.view='map';ui.zoom=null;ui.collapsed=siteFold();
+    migrateSfp(j);S=j;trackUndo.quiet=1;ui.loc=S.locations.length?S.locations[0].id:null;ui.rack=null;ui.dev=null;ui.view='map';ui.zoom=null;ui.collapsed=siteFold();
     commit()};
   rd.readAsText(f);e.target.value=''};
 
@@ -2952,7 +2958,7 @@ function firstTeamBox(){var local=S.locations.length||S.devices.length,em=(CS.us
 function cleanDoc(j){var o=Object.assign({},j);delete o.photoData;delete o.lock;delete o.exportedAt;return o}
 function uploadAllPhotos(j){var pd=j&&j.photoData;if(!pd)return Promise.resolve();var ids=Object.keys(pd);
   return ids.reduce(function(pr,id){return pr.then(function(){PHC[id]=pd[id];phPut(id,pd[id]);return photoUpload(id,pd[id],CS.team.id).catch(function(){})})},Promise.resolve())}
-function normDoc(j){j=j||{};['locations','racks','devices','ports','cables','homeruns','sites','power','issues'].forEach(function(k){if(!Array.isArray(j[k]))j[k]=[]});if(!j.settings||typeof j.settings!=='object')j.settings={};delete j.photoData;delete j.lock;delete j.exportedAt;return j}
+function normDoc(j){j=j||{};['locations','racks','devices','ports','cables','homeruns','sites','power','issues'].forEach(function(k){if(!Array.isArray(j[k]))j[k]=[]});if(!j.settings||typeof j.settings!=='object')j.settings={};delete j.photoData;delete j.lock;delete j.exportedAt;return migrateSfp(j)}
 function openTeam(t){var prevTeam=CS.loaded&&CS.team?CS.team.id:null;CS.team=t;CS.role=t.role;try{localStorage.setItem('cmTeam',t.id)}catch(e){}
   cloudStatus('loading');
   var mine=null,base=null;if(ofGet('cmDirty:'+t.id)==='1'&&ofGet('cmDocTeam')===t.id){try{mine=cleanDoc(JSON.parse(ofGet(KEY)));base=JSON.parse(ofGet('cmBase:'+t.id)||'{}')}catch(e){mine=null}}
