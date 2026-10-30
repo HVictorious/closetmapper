@@ -394,13 +394,15 @@ var DEV_FALLBACK={switch:'#2563eb',patch:'#d97706',fiber:'#0d9488',router:'#7c3a
 // kind, display name, label abbreviation, default port/outlet count
 var DEVICE_KINDS=[['switch','Switch','SW',24],['patch','Patch panel','PP',24],['fiber','Fiber panel','FP',12],['router','Router','RTR',8],['firewall','Firewall','FW',8],
   ['server','Server','SRV',4],['ups','UPS','UPS',6],['pdu','PDU','PDU',8],['other','Other device','DEV',0]];
-var NUM_OPTS=[['','Top row first: 1–24 on the top row, 25–48 below, and so on (default)'],['zigzag','Odd ports on top, even on bottom (zig-zag)']];
+var NUM_OPTS=[['','Automatic — switches odd on top, patch panels 1–24 on the top row'],['rows','Top row first: 1–24 on the top row, 25–48 below'],['zigzag','Odd ports on top, even on bottom (like HP/Aruba switches)']];
+// how ports are numbered on the faceplate: switches count odd-on-top unless told otherwise
+function numMode(d){return d.numbering==='rows'||d.numbering==='zigzag'?d.numbering:(d.kind==='switch'?'zigzag':'rows')}
 var JACK_OPTS=[['','Not set (treated as fixed)'],['yes','Removable keystone jacks — can be moved'],['no','Fixed — cannot be moved']];
 function kindRow(k){for(var i=0;i<DEVICE_KINDS.length;i++)if(DEVICE_KINDS[i][0]===k)return DEVICE_KINDS[i];return DEVICE_KINDS[0]}
 function kindOpts(){return DEVICE_KINDS.map(function(k){return [k[0],k[1]]})}
 function portsTxt(d){return d.portCount?d.portCount+(d.kind==='pdu'||d.kind==='ups'?' outlets':' ports'):(d.kind==='pdu'||d.kind==='ups'?'no outlets':'no ports')}
 function deviceColor(d){return d.color||DEV_FALLBACK[d.kind]||'#2563eb'}
-var APP_VERSION='4.0.2'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
+var APP_VERSION='4.0.3'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
 
 var Q='"'; // double-quote char used when building the cable rows on the Labels tab
 function siteFold(){var c={};(S.sites||[]).forEach(function(st,i){if(i>0)c[st.id]=true});return c}
@@ -1128,13 +1130,13 @@ function switchOpts(rid){return S.devices.filter(function(d){return d.rackId===r
 
 // ---- device templates
 var PRESETS=[{name:'24-port patch panel',kind:'patch',ports:24,h:1},
-  {name:'48-port patch panel',kind:'patch',ports:48,h:1},
-  {name:'96-port patch panel (2U)',kind:'patch',ports:96,h:2},
+  {name:'48-port patch panel (2U)',kind:'patch',ports:48,h:2},
+  {name:'96-port patch panel (4U)',kind:'patch',ports:96,h:4},
   {name:'24-port switch',kind:'switch',ports:24,h:1},
   {name:'48-port switch',kind:'switch',ports:48,h:1},
   {name:'12-port fiber panel',kind:'fiber',ports:12,h:1},{name:'24-port fiber panel',kind:'fiber',ports:24,h:1},
   {name:'Router',kind:'router',ports:8,h:1},{name:'Firewall',kind:'firewall',ports:8,h:1},
-  {name:'Server (2U)',kind:'server',ports:4,h:2},{name:'UPS (2U)',kind:'ups',ports:6,h:2},
+  {name:'Server (2U)',kind:'server',ports:4,h:2},{name:'UPS (1U)',kind:'ups',ports:6,h:1},
   {name:'PDU 8-outlet (1U)',kind:'pdu',ports:8,h:1},{name:'PDU 16-outlet (1U)',kind:'pdu',ports:16,h:1}];
 function nextDeviceName(rackId,kind){
   var prefix=kind==='patch'?'Patch Panel ':kind==='switch'?'Switch ':kind==='fiber'?'Fiber Panel ':kN(kind)+' ',max=0,same=S.devices.filter(function(x){return x.rackId===rackId&&x.kind===kind});
@@ -1874,10 +1876,10 @@ function renderRack(){
     e.onclick=function(){var u=parseInt(e.getAttribute('data-u'),10);if(placePicked(r.id,u))return;addDevice(r.id,null,u)};
     e.onmouseenter=function(){info('Empty slot U'+e.getAttribute('data-u')+' — click to add a device here.')}});
   svg.querySelectorAll('.dv').forEach(function(e){
-    var d=byId(S.devices,e.getAttribute('data-d')),startY=0,live=false,moved=false;
-    function atU(ev){var box=svg.getBoundingClientRect();
-      var u=r.height-Math.floor(((ev.clientY-box.top)/ui.zoom-T)/UH)+d.heightU-1;
-      return Math.max(1,Math.min(u,r.height-d.heightU+1))}
+    var d=byId(S.devices,e.getAttribute('data-d')),startY=0,live=false,moved=false,grab=0;
+    // the U under the pointer; a device keeps the same grip while dragged (grab a 2U device by its top half and it moves by that half)
+    function ptrU(ev){var box=svg.getBoundingClientRect();return r.height-Math.floor(((ev.clientY-box.top)/ui.zoom-T)/UH)}
+    function atU(ev){var u=ptrU(ev)-grab;return Math.max(1,Math.min(u,r.height-d.heightU+1))}
     function show(u,ev){var G=window.__ghost,direct=fits(r.id,u,d.heightU)||sameSpot(r.id,d,u),sp=direct?null:swapPlan(r.id,d,u),ok=direct||!!sp;
       var gy=T+(r.height-(u+d.heightU-1))*UH+2,gh=d.heightU*UH-4;
       G.r.setAttribute('y',gy);G.r.setAttribute('height',gh);
@@ -1890,6 +1892,7 @@ function renderRack(){
       G.readout.setAttribute('x',X0+34);G.readout.setAttribute('y',(ev.clientY-box.top)/ui.zoom+6);
       G.readout.textContent='U'+u;G.readout.style.display='';}
     function end(ev){if(!live)return;live=false;try{ev.preventDefault()}catch(x){}
+      if(!moved){var G0=window.__ghost;G0.g.style.display='none';G0.readout.style.display='none';svg.style.cursor='';return}   // a click or tap, not a drag: never move
       var u=atU(ev),ok=fits(r.id,u,d.heightU)||sameSpot(r.id,d,u),G=window.__ghost,sp=ok?null:swapPlan(r.id,d,u);
       G.g.style.display='none';G.readout.style.display='none';
       svg.style.cursor='';
@@ -1898,7 +1901,7 @@ function renderRack(){
       else info('U'+u+' is taken and the two devices cannot swap (not enough room) — '+dn(d)+' stayed where it was.')}
     var held=true,holdT=null,touch=false;
     e.onpointerdown=function(ev){if(ev.button!==0)return;
-      live=true;moved=false;startY=ev.clientY;touch=ev.pointerType==='touch';held=!touch;clearTimeout(holdT);
+      live=true;moved=false;startY=ev.clientY;grab=Math.max(0,Math.min(d.heightU-1,ptrU(ev)-d.startU));touch=ev.pointerType==='touch';held=!touch;clearTimeout(holdT);
       if(touch)holdT=setTimeout(function(){if(live){held=true;window.__dragLive=true;e.classList.add('lift');info('Now drag '+dn(d)+' to its new slot.')}},380);
       else try{e.setPointerCapture(ev.pointerId)}catch(x){}
       svg.style.cursor='grabbing'}
@@ -1910,7 +1913,7 @@ function renderRack(){
       info('Moving '+dn(d)+' to U'+u+(d.heightU>1?'–'+(u+d.heightU-1):'')+' — release to place it, or drag on.')}
     e.onpointerup=function(ev){var wasLive=live;clearTimeout(holdT);window.__dragLive=false;e.classList.remove('lift');end(ev);
       if(wasLive&&!moved){ui.dev=d.id;ui.back='rack';ui.view='device';render()}}
-    e.onpointercancel=function(ev){clearTimeout(holdT);window.__dragLive=false;e.classList.remove('lift');end(ev);live=false}
+    e.onpointercancel=function(ev){clearTimeout(holdT);window.__dragLive=false;e.classList.remove('lift');moved=false;end(ev);live=false}
     e.onmouseenter=function(){if(ghost)ghost.style.display='none'};
   })}
 
@@ -2117,7 +2120,7 @@ function hungarian(cost){ // min-cost assignment; rows <= columns; returns colum
     do{var jb=way[j0];p[j0]=p[jb];j0=jb}while(j0)}
   var ans=[];for(j=1;j<=m;j++)if(p[j])ans[p[j]-1]=j-1;return ans}
 function portCell(d,num){var n=d.portCount||0,rows=Math.max(1,Math.ceil(n/24)),cols=Math.max(1,Math.ceil(n/rows)),k=num-1;
-  return d.numbering==='zigzag'&&rows>1?{row:k%rows,col:Math.floor(k/rows)}:{row:Math.floor(k/cols),col:k%cols}}
+  return numMode(d)==='zigzag'&&rows>1?{row:k%rows,col:Math.floor(k/rows)}:{row:Math.floor(k/cols),col:k%cols}}
 function portGrid(d){var n=d.portCount||0,rows=Math.max(1,Math.ceil(n/24));return {rows:rows,cols:Math.max(1,Math.ceil(n/rows)),n:n}}
 function gridPos(d,num){return portCell(d,num)}
 // how far a patch port is from "straight across" to a switch port (0 = perfect)
@@ -3736,7 +3739,7 @@ function planDrops(l){var out=[],seen={};
     var room=e.room||guessRoom(e.label,e.color)||'';out.push({id:id,label:e.label||'',room:room,color:e.color||'',isRoom:e.isRoom,how:e.how,now:e.h?pn(e.p)+' (homerun)':pn(e.p)})});
   return out.sort(function(a,b){return natCmp(roomNorm(a.room)||'~',roomNorm(b.room)||'~')||natCmp(a.label,b.label)})}
 function pdGrid(d){var n=d.portCount||0,rows=Math.max(1,Math.ceil(n/24));return {rows:rows,cols:Math.max(1,Math.ceil(n/rows))}}
-function pdPos(d,num,x,y,w,h){var g=pdGrid(d),k=num-1,row=Math.floor(k/g.cols),col=k%g.cols,ax=x+PZ.NAME,aw=w-PZ.NAME-12,cell=Math.min(26,(aw-Math.floor((g.cols-1)/6)*4)/g.cols),gap=Math.floor(col/6)*4,cx=ax+col*cell+gap+cell/2;
+function pdPos(d,num,x,y,w,h){var g=pdGrid(d),k=num-1,zz=numMode(d)==='zigzag'&&g.rows>1,row=zz?k%g.rows:Math.floor(k/g.cols),col=zz?Math.floor(k/g.rows):k%g.cols,ax=x+PZ.NAME,aw=w-PZ.NAME-12,cell=Math.min(26,(aw-Math.floor((g.cols-1)/6)*4)/g.cols),gap=Math.floor(col/6)*4,cx=ax+col*cell+gap+cell/2;
   if(d.kind==='patch'&&h<=PZ.U){var ps=Math.min(cell-5,g.rows===1?19:13);
     if(g.rows===1)return {x:cx,y:y+h-6-ps/2,s:ps,row:0,rows:1,lt:y+3,lb:y+h-6-ps-3};
     var cy=y+h/2+(row===0?-(ps/2+1.5):ps/2+1.5);return {x:cx,y:cy,s:ps,row:row,rows:2,lt:row===0?y+2:cy+ps/2+2,lb:row===0?cy-ps/2-2:y+h-2}}
