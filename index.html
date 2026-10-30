@@ -394,13 +394,13 @@ var DEV_FALLBACK={switch:'#2563eb',patch:'#d97706',fiber:'#0d9488',router:'#7c3a
 // kind, display name, label abbreviation, default port/outlet count
 var DEVICE_KINDS=[['switch','Switch','SW',24],['patch','Patch panel','PP',24],['fiber','Fiber panel','FP',12],['router','Router','RTR',8],['firewall','Firewall','FW',8],
   ['server','Server','SRV',4],['ups','UPS','UPS',6],['pdu','PDU','PDU',8],['other','Other device','DEV',0]];
-var NUM_OPTS=[['','Top row first: 1–24 on the top row, 25–48 below (default)'],['zigzag','Odd ports on top, even on bottom (zig-zag)']];
+var NUM_OPTS=[['','Top row first: 1–24 on the top row, 25–48 below, and so on (default)'],['zigzag','Odd ports on top, even on bottom (zig-zag)']];
 var JACK_OPTS=[['','Not set (treated as fixed)'],['yes','Removable keystone jacks — can be moved'],['no','Fixed — cannot be moved']];
 function kindRow(k){for(var i=0;i<DEVICE_KINDS.length;i++)if(DEVICE_KINDS[i][0]===k)return DEVICE_KINDS[i];return DEVICE_KINDS[0]}
 function kindOpts(){return DEVICE_KINDS.map(function(k){return [k[0],k[1]]})}
 function portsTxt(d){return d.portCount?d.portCount+(d.kind==='pdu'||d.kind==='ups'?' outlets':' ports'):(d.kind==='pdu'||d.kind==='ups'?'no outlets':'no ports')}
 function deviceColor(d){return d.color||DEV_FALLBACK[d.kind]||'#2563eb'}
-var APP_VERSION='4.0.1'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
+var APP_VERSION='4.0.2'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
 
 var Q='"'; // double-quote char used when building the cable rows on the Labels tab
 function siteFold(){var c={};(S.sites||[]).forEach(function(st,i){if(i>0)c[st.id]=true});return c}
@@ -659,11 +659,16 @@ function delRack(id,quiet){
   if(ui.rack===id)ui.rack=null;
   if(!quiet)commit()}
 
+// port limits: 96 for most hardware (a 2U 96-port panel), 144 for fiber enclosures; every 2 rows of 24 need 1U
+function maxPorts(kind){return kind==='fiber'?144:96}
+function needU(pc){return Math.max(1,Math.ceil(Math.ceil((pc||0)/24)/2))}
+function portCheck(kind,pc,hu){var mx=maxPorts(kind);if(!(pc>=0&&pc<=mx)){toast('Ports / outlets must be between 0 and '+mx+(kind==='fiber'?'':' (fiber panels can have up to 144)')+'.',1);return false}
+  if(hu<needU(pc)){toast('A '+pc+'-port '+(kN(kind)||'device').toLowerCase()+' needs at least '+needU(pc)+'U — set “Height in U” to '+needU(pc)+'.',1);return false}return true}
 function addDevice(rackId,preset,atU){
   var r=byId(S.racks,rackId);if(!r)return;
   var f=[{label:'Kind',options:kindOpts(),value:preset?preset.kind:'switch'},
     {label:'Name',value:preset?preset.name:''},{label:'Label (optional)'},
-    {label:'Ports / outlets (0–48)',type:'number',value:preset?preset.ports:24},
+    {label:'Ports / outlets (up to 96; fiber 144)',type:'number',value:preset?preset.ports:24},
     {label:'Starting U (from the bottom)',type:'number',value:atU||suggestU(rackId,preset?preset.h:1)},
     {label:'Height in U',type:'number',value:preset?preset.h:1},
     {label:'Color',options:DEV_COLORS,value:preset&&preset.color?preset.color:''},
@@ -677,7 +682,8 @@ function addDevice(rackId,preset,atU){
   modal('Add device to '+r.name+(atU?' at U'+atU:''),f,function(v){
     var kind=v[0],pc=parseInt(v[3],10),su=parseInt(v[4],10),hu=parseInt(v[5],10);
     if(!v[1].trim()){toast('Give the device a name.',1);return false}
-    if(!(pc>=0&&pc<=48)){toast('Ports / outlets must be between 0 and 48.',1);return false}
+    if(!(hu>=1)){toast('Height must be 1 U or more.',1);return false}
+    if(!portCheck(kind,pc,hu))return false;
     if(!(su>=1)){toast('Starting U must be 1 or more.',1);return false}
     if(!(hu>=1)){toast('Height must be 1 U or more.',1);return false}
     if(su+hu-1>r.height){toast('Does not fit — the rack is '+r.height+'U.',1);return false}
@@ -718,7 +724,7 @@ function editDevice(d){modal('Device: '+dn(d),[
   {label:'Name',value:d.name},{label:'Label',value:d.label},
   {label:'Starting U (from the bottom)',type:'number',value:d.startU},
   {label:'Height in U',type:'number',value:d.heightU},
-  {label:'Ports / outlets (0–48)',type:'number',value:d.portCount},
+  {label:'Ports / outlets (up to 96; fiber 144)',type:'number',value:d.portCount},
   {label:'Color',options:DEV_COLORS,value:d.color||''},
   {label:'Management IP',value:d.ip||''},{label:'Asset tag',value:d.asset||''},
   {label:'Serial number',value:d.serial||''},{label:'Make and model',value:d.model||''},
@@ -732,7 +738,7 @@ function editDevice(d){modal('Device: '+dn(d),[
     var kind=v[0],su=parseInt(v[3],10),hu=parseInt(v[4],10),pc=parseInt(v[5],10),r=rackOfDevice(d);
     if(!v[1].trim()){toast('Give the device a name.',1);return false}
     if(!(su>=1&&hu>=1)){toast('U values must be 1 or more.',1);return false}
-    if(!(pc>=0&&pc<=48)){toast('Ports / outlets must be between 0 and 48.',1);return false}
+    if(!portCheck(kind,pc,hu))return false;
     if(su+hu-1>r.height){toast('Does not fit — the rack is '+r.height+'U.',1);return false}
     var clash=S.devices.filter(function(x){return x!==d&&x.rackId===d.rackId&&su<=x.startU+x.heightU-1&&x.startU<=su+hu-1})[0];
     if(clash){toast('Overlaps '+dn(clash)+'.',1);return false}
@@ -912,7 +918,7 @@ function bulkFiber(did){var d=byId(S.devices,did);if(!d)return;
     {label:'Color code',options:CABLE_COLORS,value:''}],function(v){
     var a0=parseInt(v[0],10),o=byId(S.devices,v[1]),b0=parseInt(v[2],10),cnt=parseInt(v[3],10);
     if(!o){toast('Pick the other fiber panel.',1);return false}
-    if(!(a0>=1&&b0>=1&&cnt>=1&&cnt<=48)){toast('Check the port numbers and the count (1–48).',1);return false}
+    if(!(a0>=1&&b0>=1&&cnt>=1&&cnt<=144)){toast('Check the port numbers and the count (1–144).',1);return false}
     var made=0,skipped=[],mine=portsOf(did),theirs=portsOf(o.id);
     for(var i=0;i<cnt;i++){
       var A=mine.filter(function(q){return q.num===a0+i})[0],B=theirs.filter(function(q){return q.num===b0+i})[0];
@@ -1093,7 +1099,7 @@ function bulkCable(){
     var pp=byId(S.devices,v[1]),sw=byId(S.devices,v[3]);
     if(!pp||!sw){toast('Pick a patch panel and a switch.',1);return false}
     var pa=parseInt(v[2],10),sa=parseInt(v[4],10),cnt=parseInt(v[5],10);
-    if(!(cnt>0&&cnt<=48)){toast('Cable count must be between 1 and 48.',1);return false}
+    if(!(cnt>0&&cnt<=96)){toast('Cable count must be between 1 and 96.',1);return false}
     var made=0,skipped=[],pnl=portsOf(pp.id),swp=portsOf(sw.id);
     for(var i=0;i<cnt;i++){
       var A=pnl.filter(function(p){return p.num===pa+i})[0],B=swp.filter(function(p){return p.num===sa+i})[0];
@@ -1123,6 +1129,7 @@ function switchOpts(rid){return S.devices.filter(function(d){return d.rackId===r
 // ---- device templates
 var PRESETS=[{name:'24-port patch panel',kind:'patch',ports:24,h:1},
   {name:'48-port patch panel',kind:'patch',ports:48,h:1},
+  {name:'96-port patch panel (2U)',kind:'patch',ports:96,h:2},
   {name:'24-port switch',kind:'switch',ports:24,h:1},
   {name:'48-port switch',kind:'switch',ports:48,h:1},
   {name:'12-port fiber panel',kind:'fiber',ports:12,h:1},{name:'24-port fiber panel',kind:'fiber',ports:24,h:1},
@@ -1171,14 +1178,14 @@ function importDevices(){
   var racks=S.racks.filter(function(r){return r.locId===ui.loc});
   if(!racks.length){toast('Add a rack first.',1);return}
   modal('Paste a device list',[{label:'Rack',options:racks.map(function(r){return [r.id,r.name]})},
-   {label:'One device per line: "switch, Name, 24 or 48, height" or "patch, Name, 24 or 48"',value:''}],function(v){
+   {label:'One device per line: "switch, Name, 24 or 48, height" or "patch, Name, 24, 48 or 96"',value:''}],function(v){
     var r=byId(S.racks,v[0]),made=0,bad=[];
     v[1].split(/\r?\n/).forEach(function(line){
       line=line.trim();if(!line)return;
       var c=line.split(/[,\t;]/).map(function(x){return x.trim()});
       var kind=/^(sw|switch)/i.test(c[0])?'switch':(/^(pp|patch|panel)/i.test(c[0])?'patch':(/\.*/.test(c[0])&&false?null:'switch'));
-      var pc=parseInt(c[2],10),hu=parseInt(c[3],10)||1;
-      if(!kind||!c[1]||(pc!==24&&pc!==48)){bad.push(line+' (port count must be 24 or 48)');return}
+      var pc=parseInt(c[2],10),hu=parseInt(c[3],10)||needU(pc);
+      if(!kind||!c[1]||(pc!==24&&pc!==48&&pc!==96)){bad.push(line+' (port count must be 24, 48 or 96)');return}
       var u=suggestU(r.id,hu);
       if(!fits(r.id,u,hu)){bad.push(line+' (no space)');return}
       var d={id:uid(),rackId:r.id,kind:kind,name:c[1],label:'',portCount:pc,startU:u,heightU:hu};
@@ -1581,6 +1588,10 @@ function renderRack(){
       var ls=portsOf(d.id).map(function(p){return (p.label||'').trim()}).filter(Boolean);
       if(ls.length>1){pre=ls.reduce(function(a,b){var i=0;while(i<a.length&&i<b.length&&a.charAt(i)===b.charAt(i))i++;return a.slice(0,i)});
         var cut=Math.max(pre.lastIndexOf(' '),pre.lastIndexOf('-'),pre.lastIndexOf('_'));pre=cut>=0?pre.slice(0,cut+1):''}}
+    // more than 2 rows (a 96-port 2U panel): stack 1U blocks of two rows, each drawn like a 48-port panel
+    var multi=rows>2,blocks=multi?Math.ceil(rows/2):1,bh=h/blocks;
+    if(multi){psz=Math.max(12,Math.min(cell-6,16));
+      for(var bk=1;bk<blocks;bk++)faces+='<line x1="'+(ax-8)+'" x2="'+(x+w-18)+'" y1="'+(y+bk*bh)+'" y2="'+(y+bk*bh)+'" stroke="'+(real?'#2c3036':'#000')+'" stroke-opacity="'+(real?1:.35)+'" stroke-width="1.5" pointer-events="none"/>'}
     if(false)faces+='<text x="'+(x+10)+'" y="'+(y+56)+'" font-size="10" fill="#fff" fill-opacity=".8" pointer-events="none">Labels start “'+esc(pre.trim())+'”</text>';
     // how much of a port label can be read: one line under the port when the rows are
     // single, a shorter one inside the port when a 48-port device has two rows
@@ -1623,6 +1634,8 @@ function renderRack(){
       var cx=ax+gx(ci)+cell/2,cy=areaTop+row*rowH+rowH/2;
       if(rows===1)cy=y+h-27-psz/2; // single row: ports sit just above the cable band, label goes above them
       if(two)cy=y+h/2+(row===0?-1-psz/2:1+psz/2);
+      var yb=y,hb=h,rib=row,solo=false;
+      if(multi){var bi=Math.floor(row/2);yb=y+bi*bh;hb=bh;rib=row%2;solo=bi===blocks-1&&rows%2===1;cy=solo?yb+hb/2:yb+hb/2+(rib===0?-1-psz/2:1+psz/2)}
       var labelTxt=p.label&&showL?labelFor(p.label):'';
       if(labelTxt&&labelTxt!==p.label&&labelTxt.length>1)labelTxt=labelTxt.slice(0,-1)+'…';
       if(rows>1)labelY=y+4+row*rowH+rowH/2+labelFs*0.36;
@@ -1638,7 +1651,8 @@ function renderRack(){
            '<rect x="'+(cx+psz/2-4)+'" y="'+(row===0||rows===1?cy-psz/2-5:cy+psz/2+2)+'" width="3" height="2.4" fill="'+(cableOf(p.id)||homerunOf(p.id)?'#3fdc6e':'#1f3b2a')+'" pointer-events="none"/>'):'';
       portg+=shroud+'<g class="pt" data-p="'+p.id+'"><rect x="'+(cx-psz/2)+'" y="'+(cy-psz/2)+'" width="'+psz+'" height="'+psz+'" rx="2" fill="'+(pcol||(used?'#16a34a':'#0b1220'))+'" stroke="'+(pcol&&used?'#fff':'#e5e7eb')+'" stroke-width="'+(pcol&&used?2.5:1)+'"/>'+
         (psz>=14?'<text x="'+cx+'" y="'+(cy+3.5)+'" font-size="'+(psz>=20?11:9)+'" fill="'+(pcol?inkFor(pcol):'#fff')+'" text-anchor="middle" pointer-events="none">'+p.num+'</text>':'')+
-        (two&&(p.label||'').trim()?(row===0?rotLabel(cx,cy-psz/2-2,y+2,cell,p.label,labCol):rotLabel(cx,y+h-2,cy+psz/2+2,cell,p.label,labCol,true)):
+        (multi&&showL&&(p.label||'').trim()?(rib===0||solo?rotLabel(cx,cy-psz/2-2,yb+2,cell,p.label,labCol):rotLabel(cx,yb+hb-2,cy+psz/2+2,cell,p.label,labCol,true)):
+        two&&(p.label||'').trim()?(row===0?rotLabel(cx,cy-psz/2-2,y+2,cell,p.label,labCol):rotLabel(cx,y+h-2,cy+psz/2+2,cell,p.label,labCol,true)):
         p.label&&showL&&rows===1?rotLabel(cx,cy-psz/2-2,y+1,cell,p.label,labCol):p.label&&showL&&labelTxt?'<text x="'+cx+'" y="'+labelY+'" font-size="'+labelFs+'" fill="#fff" text-anchor="middle" pointer-events="none">'+
           esc(labelTxt).split('\n').map(function(ln,li){return '<tspan x="'+cx+'" dy="'+(li?labelFs+1:0)+'">'+ln+'</tspan>'}).join('')+'</text>':'')+
         (ISX[p.id]?'<circle class="isdot" cx="'+(cx+psz/2-1)+'" cy="'+(cy-psz/2+1)+'" r="'+Math.max(3.5,psz/4)+'" fill="#ef4444" stroke="#fff" stroke-width="1.2" pointer-events="none"/>':'')+
