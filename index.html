@@ -347,6 +347,9 @@ body{touch-action:manipulation}
 .port.iss{box-shadow:inset 0 0 0 2px #ef4444}.port.iss::after{content:"";position:absolute;top:3px;right:3px;width:8px;height:8px;border-radius:50%;background:#ef4444}.port{position:relative}
 .port.flash{animation:pflash 1.4s ease-out 2}@keyframes pflash{0%{outline:3px solid var(--accent);outline-offset:2px}100%{outline:3px solid transparent;outline-offset:8px}}
 textarea{width:100%;box-sizing:border-box;font:inherit;background:var(--sunk);color:var(--text);border:1px solid var(--line2);border-radius:6px;padding:8px}
+.rack.rt-floor,.rack.rt-wall{margin:18px 8px 8px;border-color:#2a3440;box-shadow:0 0 0 6px #2a3440,0 -10px 0 6px #2a3440,inset 0 0 0 1px #7dd3fc22;border-radius:3px}
+.rack.rt-wall{box-shadow:0 0 0 6px #2a3440,0 -10px 0 6px #56616e,inset 0 0 0 1px #7dd3fc22}.rack.rt-2post{margin-left:8px;border-color:transparent;box-shadow:-6px 0 0 #3a4552,6px 0 0 #3a4552,0 6px 0 2px #3a4552}
+.rk .ty{font-size:10px;color:var(--faint);margin-left:6px}
 </style></head><body>
 <div id="shell">
 <aside id="side" aria-label="Sites, closets and racks"></aside>
@@ -402,7 +405,7 @@ function kindRow(k){for(var i=0;i<DEVICE_KINDS.length;i++)if(DEVICE_KINDS[i][0]=
 function kindOpts(){return DEVICE_KINDS.map(function(k){return [k[0],k[1]]})}
 function portsTxt(d){return d.portCount?d.portCount+(d.kind==='pdu'||d.kind==='ups'?' outlets':' ports'):(d.kind==='pdu'||d.kind==='ups'?'no outlets':'no ports')}
 function deviceColor(d){return d.color||DEV_FALLBACK[d.kind]||'#2563eb'}
-var APP_VERSION='4.0.3'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
+var APP_VERSION='4.0.4'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
 
 var Q='"'; // double-quote char used when building the cable rows on the Labels tab
 function siteFold(){var c={};(S.sites||[]).forEach(function(st,i){if(i>0)c[st.id]=true});return c}
@@ -624,19 +627,35 @@ function renameLocation(l){var hasS=S.sites.length>0,f=[{label:'Name',value:l.na
   if(hasS&&(v[2]||'')!==(l.siteId||'')){placeLoc(l.id,v[2],null);return}
   commit()})}
 
+// racks come in four kinds; a cabinet is an enclosed rack (floor-standing or wall-mounted) and can have a lock/key noted
+var RACK_TYPES=[['','Open rack (4-post)'],['2post','2-post relay rack'],['floor','Floor cabinet'],['wall','Wall-mount cabinet']];
+function isCab(r){return !!r&&(r.type==='floor'||r.type==='wall')}
+function rackType(r){var t=RACK_TYPES.filter(function(x){return x[0]===((r&&r.type)||'')})[0];return t?t[1]:RACK_TYPES[0][1]}
+function rackWord(r){return isCab(r)?'cabinet':'rack'}
+function nextRackName(lid,type){var cab=type==='floor'||type==='wall',base=cab?'Cabinet ':'Rack ',n=0,taken={};S.racks.forEach(function(x){if(x.locId===lid)taken[x.name]=1});do{n++}while(taken[base+n]);return base+n}
+function rackForm(r,isNew){var t=(r&&r.type)||'';
+  return [{label:'Type',options:RACK_TYPES,value:t},{label:'Name',value:r?r.name:''},{label:'Label (optional)',value:r?r.label||'':''},
+    {label:'Height in U',type:'number',value:r?r.height:42},{label:'Lock / key (cabinets)',value:r&&r.lock||''},{label:'Notes',value:r&&r.notes||''}]}
+function rackFormLive(isNew){var ty=el('f0'),nm=el('f1'),ht=el('f3'),lk=el('f4'),touched=!isNew;
+  ht.addEventListener('input',function(){touched=true});
+  function upd(){var t=ty.value,cab=t==='floor'||t==='wall';if(!touched)ht.value=t==='wall'?12:42;
+    if(isNew)nm.placeholder=nextRackName(ui.loc,t);lk.disabled=!cab;lk.placeholder=cab?'e.g. Key 1234, combination on file':'Only for cabinets';
+    var lb=lk.previousElementSibling;if(lb)lb.style.opacity=cab?1:.5}
+  ty.onchange=upd;upd()}
 function addRack(){if(!ui.loc){toast('Add a location first.',1);return}
-  modal('New rack',[{label:'Name'},{label:'Label (optional)'},{label:'Height in U',type:'number',value:42}],function(v){
-  var hgt=parseInt(v[2],10);
-  if(!v[0].trim()){toast('Give the rack a name.',1);return false}
+  modal('New rack or cabinet',rackForm(null,true),function(v){
+  var hgt=parseInt(v[3],10),t=v[0],cab=t==='floor'||t==='wall';
   if(!(hgt>0&&hgt<=60)){toast('Height must be between 1 and 60 U.',1);return false}
-  S.racks.push({id:uid(),locId:ui.loc,name:v[0].trim(),label:v[1].trim(),height:hgt});commit()})}
+  S.racks.push({id:uid(),locId:ui.loc,type:t||undefined,name:v[1].trim()||nextRackName(ui.loc,t),label:v[2].trim(),height:hgt,lock:cab&&v[4].trim()||undefined,notes:v[5].trim()||undefined});
+  ui.entered=true;commit()},function(){rackFormLive(true)})}
 
-function renameRack(r){modal('Rack',[{label:'Name',value:r.name},{label:'Label',value:r.label},{label:'Height in U',type:'number',value:r.height}],function(v){
-  var hgt=parseInt(v[2],10);
+function renameRack(r){modal('Edit '+rackWord(r)+' — '+(r.label||r.name),rackForm(r),function(v){
+  var hgt=parseInt(v[3],10),t=v[0],cab=t==='floor'||t==='wall';
   if(!(hgt>0&&hgt<=60)){toast('Height must be between 1 and 60 U.',1);return false}
   var bad=S.devices.filter(function(d){return d.rackId===r.id&&d.startU+d.heightU-1>hgt})[0];
   if(bad){toast('Too short: '+dn(bad)+' reaches U'+(bad.startU+bad.heightU-1)+'.',1);return false}
-  r.name=v[0].trim()||r.name;r.label=v[1].trim();r.height=hgt;commit()})}
+  if(t)r.type=t;else delete r.type;r.name=v[1].trim()||r.name;r.label=v[2].trim();r.height=hgt;
+  if(cab&&v[4].trim())r.lock=v[4].trim();else delete r.lock;if(v[5].trim())r.notes=v[5].trim();else delete r.notes;commit()},function(){rackFormLive(false)})}
 
 
 // ---- deleting a device or rack: you have to type its name, so one stray click can't wipe it out
@@ -1296,7 +1315,7 @@ function labelItems(o){
   if(o.what==='closets')S.locations.filter(function(l){return o.rack==='all'||(o.rack==='loc'?l.id===ui.loc:S.racks.some(function(r){return r.id===o.rack&&r.locId===l.id}))}).forEach(function(l){var st=siteOf(l);
     out.push({main:l.label||l.name,sub:(st?st.name+' · ':'')+'Network closet',qr:baseUrl()+'#loc='+l.id})});
   if(o.what==='racks')S.racks.filter(function(r){return o.rack==='all'||(o.rack==='loc'?r.locId===ui.loc:r.id===o.rack)}).forEach(function(r){
-    out.push({main:r.label||r.name,sub:locFull(locOfRack(r))+' · '+r.height+'U',qr:baseUrl()+'#rack='+r.id})});
+    out.push({main:r.label||r.name,sub:locFull(locOfRack(r))+' · '+r.height+'U'+(isCab(r)?' cabinet':''),qr:baseUrl()+'#rack='+r.id})});
   if(o.what==='devices')S.devices.filter(ok).forEach(function(d){
     out.push({main:dn(d),sub:kN(d.kind)+' · '+where(d)+' · U'+d.startU,qr:baseUrl()+'#dev='+d.id})});
   if(o.what==='ports')S.devices.filter(ok).forEach(function(d){portsOf(d.id).forEach(function(p){
@@ -1509,7 +1528,7 @@ function renderRack(){
     if(!r&&ui.loc&&byId(S.locations,ui.loc)){
       // the location you clicked has no racks: say so here instead of showing some other location's rack
       var cl=byId(S.locations,ui.loc);
-      m.innerHTML='<div class="row"><h2 style="margin:0">'+(siteOf(cl)?'<span class="muted" style="font-size:14px;font-weight:400">'+esc(siteOf(cl).name)+' › </span>':'')+esc(cl.name)+'</h2><button id="rAddEmpty" class="pri">+ Add rack</button></div>'+
+      m.innerHTML='<div class="row"><h2 style="margin:0">'+(siteOf(cl)?'<span class="muted" style="font-size:14px;font-weight:400">'+esc(siteOf(cl).name)+' › </span>':'')+esc(cl.name)+'</h2><button id="rAddEmpty" class="pri">+ Add rack / cabinet</button></div>'+
         '<p class="muted">No racks in this location yet. Add one to see it here.</p>'+
         '<p class="muted" style="font-size:13px">Racks in other locations: '+S.racks.map(function(x){return '<a href="#" data-gor="'+x.id+'">'+esc(locFull(locOfRack(x))+' / '+x.name)+'</a>'}).join(' · ')+'</p>';
       el('rAddEmpty').onclick=addRack;
@@ -1518,11 +1537,24 @@ function renderRack(){
     if(!r)r=S.racks[0];ui.rack=r.id}
   var powHere=S.power.filter(function(w){var q=byId(S.ports,w.port),dv=q&&deviceOfPort(q);return dv&&dv.rackId===r.id});
   var hrHere=S.homeruns.filter(function(h){var q=byId(S.ports,h.port),dv=q&&deviceOfPort(q);return dv&&dv.rackId===r.id});
-  var showL=ui.showL!==false,UH=84,RW=820,X0=44+(powHere.length?30+powHere.length*13:0),T=34+(hrHere.length?90:0),H=r.height*UH,RX=X0+RW;
+  var cab=isCab(r),showL=ui.showL!==false,UH=84,RW=820,X0=44+(cab?30:0)+(powHere.length?30+powHere.length*13:0),T=34+(cab?58:0)+(hrHere.length?90:0),H=r.height*UH,RX=X0+RW;
   var devs=S.devices.filter(function(d){return d.rackId===r.id});
   var pos={},geo={},frame='',faces='',portg='',cabg='';
-  frame+='<text x="'+(X0+RW/2)+'" y="18" font-size="16" font-weight="700" text-anchor="middle" class="ink">'+esc(r.label||r.name)+' · '+r.height+'U</text>';
-  frame+='<rect x="'+(X0-16)+'" y="'+(T-14)+'" width="'+(RW+32)+'" height="'+(H+28)+'" rx="6" fill="#111827"/><rect x="'+X0+'" y="'+T+'" width="'+RW+'" height="'+H+'" fill="#1f2937"/>';
+  frame+='<text x="'+(X0+RW/2)+'" y="18" font-size="16" font-weight="700" text-anchor="middle" class="ink">'+esc(r.label||r.name)+' · '+r.height+'U'+(r.type?' · '+esc(rackType(r)):'')+(r.lock?'  ·  🔑 '+esc(r.lock):'')+'</text>';
+  if(cab){ // enclosed cabinet: steel shell with perforated side panels, a top cap with vents, and feet (floor) or wall brackets (wall)
+    var cx0=X0-56,cw0=RW+112,cy0=T-46,ch0=H+(r.type==='floor'?78:64),perf='';
+    for(var py=T+8;py<T+H-6;py+=14)for(var px=0;px<2;px++){perf+='<circle cx="'+(cx0+8+px*7)+'" cy="'+py+'" r="1.6" fill="#05080b"/><circle cx="'+(cx0+cw0-15+px*7)+'" cy="'+py+'" r="1.6" fill="#05080b"/>'}
+    frame+='<rect x="'+cx0+'" y="'+cy0+'" width="'+cw0+'" height="'+ch0+'" rx="8" fill="#151b22" stroke="#3a4552" stroke-width="2"/>'+
+      '<rect x="'+(cx0+4)+'" y="'+(cy0+4)+'" width="'+(cw0-8)+'" height="28" rx="5" fill="#1c242d"/>'+perf;
+    for(var vx=cx0+cw0/2-150;vx<cx0+cw0/2+150;vx+=12)frame+='<rect x="'+vx+'" y="'+(cy0+12)+'" width="7" height="12" rx="2" fill="#0a0e12"/>';
+    frame+='<rect x="'+(cx0+cw0-34)+'" y="'+(T+H/2-28)+'" width="10" height="56" rx="4" fill="#2b333d" stroke="#56616e"/>'+   // door handle
+      '<rect x="'+(X0-30)+'" y="'+(T-12)+'" width="'+(RW+60)+'" height="'+(H+24)+'" rx="3" fill="none" stroke="#7dd3fc" stroke-opacity=".18" stroke-width="2" stroke-dasharray="10 6"/>';  // glass door outline
+    if(r.type==='floor')frame+='<rect x="'+(cx0+18)+'" y="'+(cy0+ch0)+'" width="34" height="10" rx="2" fill="#0b0f14"/><rect x="'+(cx0+cw0-52)+'" y="'+(cy0+ch0)+'" width="34" height="10" rx="2" fill="#0b0f14"/>';
+    else frame+='<rect x="'+(cx0+30)+'" y="'+(cy0-8)+'" width="60" height="10" rx="2" fill="#56616e"/><rect x="'+(cx0+cw0-90)+'" y="'+(cy0-8)+'" width="60" height="10" rx="2" fill="#56616e"/>'}
+  if(r.type==='2post'){ // two upright posts and a base, no enclosure
+    frame+='<rect x="'+(X0-16)+'" y="'+(T-14)+'" width="22" height="'+(H+28)+'" rx="3" fill="#2a3340"/><rect x="'+(X0+RW-6)+'" y="'+(T-14)+'" width="22" height="'+(H+28)+'" rx="3" fill="#2a3340"/>'+
+      '<rect x="'+(X0-40)+'" y="'+(T+H+10)+'" width="'+(RW+80)+'" height="10" rx="3" fill="#2a3340"/><rect x="'+(X0+6)+'" y="'+T+'" width="'+(RW-12)+'" height="'+H+'" fill="#1f2937" fill-opacity=".35"/>'}
+  else frame+='<rect x="'+(X0-16)+'" y="'+(T-14)+'" width="'+(RW+32)+'" height="'+(H+28)+'" rx="6" fill="#111827"/><rect x="'+X0+'" y="'+T+'" width="'+RW+'" height="'+H+'" fill="#1f2937"/>';
   for(var u=1;u<=r.height;u++){var y=T+(r.height-u)*UH;
     frame+='<line x1="'+X0+'" x2="'+(X0+RW)+'" y1="'+y+'" y2="'+y+'" stroke="#374151"/>'+
       '<text x="'+(X0-22)+'" y="'+(y+UH/2+4)+'" font-size="11" fill="#9ca3af" text-anchor="end">'+u+'</text>'+
@@ -1760,9 +1792,9 @@ function renderRack(){
       (q.t?'<circle cx="'+q.tx+'" cy="'+q.ty+'" r="3.2" fill="#e5e7eb" stroke="#000" stroke-opacity=".7"/>':'')+
       (elsewhere&&showL&&maxc>=4?'<text transform="translate('+(lx-3)+','+(a.ry-8)+') rotate(-90)" font-size="10" class="ink" pointer-events="none">'+esc(('⚡ '+elsewhere).length>maxc?('⚡ '+elsewhere).slice(0,maxc-1)+'…':'⚡ '+elsewhere)+'</text>':'')+
       '<title>'+esc(tip)+'</title></g>'});
-  var totalW=xt+(out.length?470:20),totalH=H+T+30;
+  var totalW=xt+(out.length?470:20),totalH=H+T+30+(cab?44:0);
   var zoomW=ui.zoom||1;
-  var selRack=S.racks.map(function(x){return '<option value="'+x.id+'"'+(x.id===r.id?' selected':'')+'>'+esc(locFull(locOfRack(x))+' / '+x.name)+'</option>'}).join('');
+  var selRack=S.racks.map(function(x){return '<option value="'+x.id+'"'+(x.id===r.id?' selected':'')+'>'+esc(locFull(locOfRack(x))+' / '+x.name+(isCab(x)?' ('+(x.type==='wall'?'wall cabinet':'cabinet')+')':''))+'</option>'}).join('');
   m.innerHTML='<div class="row noprint"><b>Rack:</b><select id="rsel" title="Which rack to show">'+selRack+'</select>'+
    '<button id="zo">−</button><span id="zl" style="min-width:44px;text-align:center"></span><button id="zi">+</button>'+
    '<button id="zf">Fit height</button><button id="zw">Fit width</button><button id="z1">100%</button>'+
@@ -1990,7 +2022,7 @@ function renderMap(){
     return}
   var racks=S.racks.filter(function(r){return r.locId===l.id});
   var h='<div class="row"><h2 style="margin:0">'+(siteOf(l)?'<span class="muted" style="font-size:14px;font-weight:400">'+esc(siteOf(l).name)+' › </span>':'')+esc(l.name)+'</h2><span class="muted">'+esc(l.label||'')+'</span>'+
-    '<button id="addR" class="pri">+ Add rack</button><button id="renL">Rename</button>'+
+    '<button id="addR" class="pri">+ Add rack / cabinet</button><button id="renL">Rename</button>'+
     '<button id="bulkC">Bulk connect…</button><button id="impD">Paste device list…</button>'+photoBtn('loc',l.id)+'<button data-qr="loc:'+l.id+'" title="QR code for the closet door">QR</button><button id="locIss">Report a problem</button>'+
     '<button class="dng" id="delL">Delete location</button></div>'+issueStrip('loc',l.id);
   h+='<div class="racks">';
@@ -2004,11 +2036,11 @@ function renderMap(){
       inner+='<div class="dev" data-d="'+d.id+'" style="background:'+deviceColor(d)+';top:'+((r.height-(d.startU+d.heightU-1))*U+1)+'px;height:'+(d.heightU*U-2)+'px;line-height:'+(d.heightU*U-4)+'px">'+
         esc(dn(d))+' <span style="opacity:.7">('+used+'/'+d.portCount+')</span>'+
         (d.ip||d.asset?'<div style="font-size:9px;opacity:.85;line-height:1.1">'+esc([d.ip,d.asset].filter(Boolean).join(' · '))+'</div>':'')+'</div>'});
-    h+='<div class="rackbox"><div class="row"><b>'+esc(r.label||r.name)+'</b><span class="muted">'+r.height+'U</span></div>'+
+    h+='<div class="rackbox"><div class="row"><b>'+esc(r.label||r.name)+'</b><span class="muted">'+r.height+'U · '+esc(rackType(r))+'</span>'+(r.lock?'<span class="chip0" title="Lock / key">🔑 '+esc(r.lock)+'</span>':'')+'</div>'+(r.notes?'<div class="muted" style="font-size:12px;margin:-2px 0 6px">'+esc(r.notes)+'</div>':'')+
       '<div class="row"><button data-add="'+r.id+'">+ Device</button><button data-pre="'+r.id+'">From template</button>'+
-      '<button data-ren="'+r.id+'">Rename</button><button data-col="'+r.id+'">Color…</button>'+photoBtn('rack',r.id)+'<button data-rk="'+r.id+'" class="pri">Rack view</button>'+
+      '<button data-ren="'+r.id+'">Edit</button><button data-col="'+r.id+'">Color…</button>'+photoBtn('rack',r.id)+'<button data-rk="'+r.id+'" class="pri">Rack view</button>'+
       '<button class="dng" data-delr="'+r.id+'">✕</button></div>'+
-      '<div class="rack" style="height:'+(r.height*U)+'px">'+inner+'</div></div>'});
+      '<div class="rack'+(r.type?' rt-'+r.type:'')+'" style="height:'+(r.height*U)+'px">'+inner+'</div></div>'});
   h+='</div>';
   if(!racks.length)h+='<p class="muted">No racks in this location yet. Click "Add rack".</p>';
   m.innerHTML=h;
@@ -2036,7 +2068,7 @@ function renderSide(){
   function racksOf(l){return S.racks.filter(function(r){return r.locId===l.id})}
   function locRow(l,inSite){var rs=racksOf(l),open=l.id===ui.loc,o='<div class="loc'+(inSite?' in':'')+(open?' sel':'')+'" draggable="true" data-l="'+l.id+'"><span><span class="grip">⠿</span> '+esc(l.label||l.name)+whoChip(l.id)+(openIssuesIn(l.id)?'<span class="isb" title="'+openIssuesIn(l.id)+' open issue'+(openIssuesIn(l.id)===1?'':'s')+'">'+openIssuesIn(l.id)+'</span>':'')+'</span>'+
     '<span><span class="mv" data-mv="'+l.id+'" data-d="-1" title="Move up">▲</span><span class="mv" data-mv="'+l.id+'" data-d="1" title="Move down">▼</span><span class="x" data-del="'+l.id+'" title="Delete">✕</span> <span class="n">'+rs.length+'</span></span></div>';
-    if(open)rs.forEach(function(r){o+='<div class="rk'+(inSite?' in':'')+(r.id===ui.rack&&ui.view==='rack'?' sel':'')+'" data-r="'+r.id+'"><span>'+esc(r.label||r.name)+'</span><span class="u">'+r.height+'U</span></div>'});
+    if(open)rs.forEach(function(r){o+='<div class="rk'+(inSite?' in':'')+(r.id===ui.rack&&ui.view==='rack'?' sel':'')+'" data-r="'+r.id+'"><span>'+esc(r.label||r.name)+(isCab(r)?'<span class="ty">'+(r.type==='wall'?'wall cab':'cabinet')+'</span>':'')+'</span><span class="u">'+r.height+'U</span></div>'});
     return o}
   S.sites.forEach(function(st){var ls=S.locations.filter(function(l){return l.siteId===st.id}),col=ui.collapsed[st.id];
     h+='<div class="site" draggable="true" data-s="'+st.id+'"><span>'+(col?'▸':'▾')+' '+esc(st.name)+' <span class="cnt">'+ls.length+'</span></span>'+
@@ -2754,7 +2786,7 @@ window.addEventListener('hashchange',function(){openFromHash();render()});
 var JSQR_URL='https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js',QRGEN_URL='https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js';
 function qrTarget(kind,id){var o=kind==='dev'?byId(S.devices,id):kind==='rack'?byId(S.racks,id):byId(S.locations,id);if(!o)return null;
   if(kind==='dev'){var r=rackOfDevice(o),l=r&&locOfRack(r);return {o:o,main:dn(o),sub:(l?locFull(l)+' / ':'')+(r?r.name:'')+' · U'+o.startU,url:baseUrl()+'#dev='+id}}
-  if(kind==='rack'){var l2=locOfRack(o);return {o:o,main:o.label||o.name,sub:(l2?locFull(l2):'')+' · '+o.height+'U',url:baseUrl()+'#rack='+id}}
+  if(kind==='rack'){var l2=locOfRack(o);return {o:o,main:o.label||o.name,sub:(l2?locFull(l2):'')+' · '+o.height+'U'+(isCab(o)?' cabinet':''),url:baseUrl()+'#rack='+id}}
   var st=siteOf(o);return {o:o,main:o.label||o.name,sub:(st?st.name+' · ':'')+'Network closet',url:baseUrl()+'#loc='+id}}
 function qrShow(kind,id){var t=qrTarget(kind,id);if(!t)return;
   if(!qrLib){if(ui.qrFail&&!navigator.onLine)return toast('QR codes need a connection the first time.',1);return loadQR(function(){if(qrLib)qrShow(kind,id);else toast('Could not load the QR code maker. Check the connection.',1)})}

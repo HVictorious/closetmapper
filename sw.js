@@ -1,6 +1,6 @@
 // Closet Mapper service worker: lets the app open and work with no signal (closets often have none).
 // The page itself is fetched fresh whenever there is a connection, so updates still arrive straight away.
-const V = 'cm-4.0.3';
+const V = 'cm-4.0.4';
 const SHELL = ['./', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './favicon-32.png'];
 const LIBS = /^https:\/\/(cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com|unpkg\.com|fonts\.googleapis\.com|fonts\.gstatic\.com)\//;
 
