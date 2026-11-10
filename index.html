@@ -355,6 +355,8 @@ textarea{width:100%;box-sizing:border-box;font:inherit;background:var(--sunk);co
 table.rpt .n{text-align:right;font-family:var(--mono)}table.rpt tr.tot td{font-weight:700;border-top:2px solid var(--line2)}table.rpt tr.rrow{cursor:pointer}table.rpt tr.rrow:hover td{background:var(--raise)}
 .roombox .rmore{display:block;margin:6px -4px -4px;padding:6px 4px;border-top:1px dashed var(--line);color:var(--accent);font-size:13px;font-weight:600;text-align:center;border-radius:0 0 6px 6px}
 .roombox .rmore:hover{background:var(--raise)}
+.frt td input.frin{border:1px solid var(--line2);background:var(--sunk);color:var(--text);border-radius:5px;padding:6px 8px;font-size:14px;min-width:120px}
+.frt td input.frin:focus{background:var(--sunk);outline:2px solid var(--accent);outline-offset:0}.frt td input[data-fr]{min-width:130px}.frt td{vertical-align:middle;padding:4px 6px}
 </style></head><body>
 <div id="shell">
 <aside id="side" aria-label="Sites, closets and racks"></aside>
@@ -411,7 +413,7 @@ function kindRow(k){for(var i=0;i<DEVICE_KINDS.length;i++)if(DEVICE_KINDS[i][0]=
 function kindOpts(){return DEVICE_KINDS.map(function(k){return [k[0],k[1]]})}
 function portsTxt(d){return (d.portCount?d.portCount+(d.kind==='pdu'||d.kind==='ups'?' outlets':sfpMain(d)?' SFP+ ports':' ports'):(d.kind==='pdu'||d.kind==='ups'?'no outlets':'no ports'))+(d.sfp?' + '+d.sfp+' SFP+':'')}
 function deviceColor(d){return d.color||DEV_FALLBACK[d.kind]||'#2563eb'}
-var APP_VERSION='4.1.7'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
+var APP_VERSION='4.1.8'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
 
 var Q='"'; // double-quote char used when building the cable rows on the Labels tab
 function siteFold(){var c={};(S.sites||[]).forEach(function(st,i){if(i>0)c[st.id]=true});return c}
@@ -3611,17 +3613,29 @@ function renderRoom(g){var m=el('main');
   bindTrace(m)}
 // one place to give every labelled jack its room: suggestions come from the label, you confirm or change them
 function fillRooms(missing){var rows=missing.slice(0,400);
-  modal('Set rooms for '+missing.length+' jack'+(missing.length===1?'':'s'),[],function(){var n=0;
-    el('mbox').querySelectorAll('input[data-fr]').forEach(function(inp){var v=inp.value.trim();if(!v)return;var i=+inp.getAttribute('data-fr'),e=rows[i];
-      if(e.h)e.h.room=v;else e.p.room=v;n++});
-    commit();toast('Set the room on '+n+' jack'+(n===1?'':'s')+'. Ctrl+Z undoes it.')},function(){
-    var box=el('mbox'),w=document.createElement('div');w.style.minWidth='min(620px,86vw)';
-    w.innerHTML='<p class="muted" style="margin:0 0 8px">Each box is filled in from the jack’s label — fix any that are wrong, clear one to skip it. The jack keeps its label; the room is stored next to it.</p>'+
-      '<div style="max-height:56vh;overflow:auto"><table><tr><th>Jack</th><th>Label</th><th>Room</th><th>Shows as</th></tr>'+rows.map(function(e,i){var gs=guessRoom(e.label,e.color);
-        return '<tr><td class="mono">'+esc(pn(e.p))+(e.how==='homerun'?' (homerun)':'')+'</td><td>'+esc(e.label)+'</td><td><input data-fr="'+i+'" value="'+esc(gs)+'" style="width:110px"></td><td class="muted" data-sa="'+i+'">'+esc(dropName(e.label,gs))+'</td></tr>'}).join('')+'</table></div>'+
+  modal('Set rooms for '+missing.length+' jack'+(missing.length===1?'':'s'),[],function(){var n=0,nl=0;
+    el('mbox').querySelectorAll('input[data-fr]').forEach(function(inp){var i=+inp.getAttribute('data-fr'),e=rows[i],v=inp.value.trim(),lb=el('mbox').querySelector('input[data-fl="'+i+'"]'),nlab=lb?lb.value.trim():e.label;
+      if(nlab!==e.label){if(e.h)e.h.label=nlab;else e.p.label=nlab;nl++}
+      if(!v)return;if(e.h)e.h.room=v;else e.p.room=v;n++});
+    if(!n&&!nl){toast('Nothing to save — type a room in at least one box.',1);return false}
+    commit();toast('Set the room on '+n+' jack'+(n===1?'':'s')+(nl?' and changed '+nl+' label'+(nl===1?'':'s'):'')+'. Ctrl+Z undoes it.')},function(){
+    var box=el('mbox'),w=document.createElement('div');w.style.minWidth='min(760px,90vw)';
+    var known={};S.ports.concat(S.homeruns).forEach(function(x){var r=(x.room||'').trim();if(r)known[r]=1});CABLE_CODES.forEach(function(k){if(k[4])known[k[4]]=1});
+    w.innerHTML='<p class="muted" style="margin:0 0 8px">Type the room each jack serves (rooms you have used before are suggested). Boxes left empty are skipped. You can fix a label here too. <b>Enter</b> moves to the next jack; <b>Fill down</b> copies a room to every empty box below it.</p>'+
+      '<datalist id="frRooms">'+Object.keys(known).sort(natCmp).map(function(r){return '<option value="'+esc(r)+'">'}).join('')+'</datalist>'+
+      '<div style="max-height:56vh;overflow:auto"><table class="frt"><tr><th>Jack</th><th>Label</th><th>Room</th><th></th><th>Shows as</th></tr>'+rows.map(function(e,i){var gs=guessRoom(e.label,e.color);
+        return '<tr><td class="mono" style="white-space:nowrap">'+esc(pn(e.p))+(e.how==='homerun'?' <span class="muted">(homerun)</span>':'')+'<br><small class="muted">'+esc((portWhere(e.p).l||{}).name||'')+'</small></td>'+
+          '<td><input class="frin" data-fl="'+i+'" value="'+esc(e.label)+'"></td><td><input class="frin" data-fr="'+i+'" list="frRooms" value="'+esc(gs)+'" placeholder="Room…"></td>'+
+          '<td><button type="button" class="ib" data-fd="'+i+'" title="Copy this room to every empty box below">Fill down</button></td><td class="muted" data-sa="'+i+'">'+esc(gs?dropName(e.label,gs):'')+'</td></tr>'}).join('')+'</table></div>'+
       (missing.length>rows.length?'<p class="muted">Showing the first '+rows.length+'; run it again for the rest.</p>':'');
     box.insertBefore(w,el('mok').parentNode);el('mok').textContent='Save rooms';
-    w.querySelectorAll('input[data-fr]').forEach(function(inp){inp.oninput=function(){var i=+inp.getAttribute('data-fr');w.querySelector('[data-sa="'+i+'"]').textContent=dropName(rows[i].label,inp.value)}})})}
+    var ins=[].slice.call(w.querySelectorAll('input[data-fr]'));
+    function upd(i){var r=w.querySelector('input[data-fr="'+i+'"]').value,l=w.querySelector('input[data-fl="'+i+'"]').value;w.querySelector('[data-sa="'+i+'"]').textContent=r.trim()?dropName(l,r):''}
+    w.querySelectorAll('input.frin').forEach(function(inp){var i=+(inp.getAttribute('data-fr')||inp.getAttribute('data-fl'));inp.oninput=function(){upd(i)};
+      inp.onkeydown=function(e){if(e.key==='Enter'){e.preventDefault();e.stopPropagation();var k=inp.hasAttribute('data-fr')?'data-fr':'data-fl',nx=w.querySelector('input['+k+'="'+(i+1)+'"]');if(nx){nx.focus();nx.select()}}}});
+    w.querySelectorAll('[data-fd]').forEach(function(b){b.onclick=function(){var i=+b.getAttribute('data-fd'),v=ins[i].value.trim();if(!v)return toast('Type a room in that box first.',1);var c=0;
+      for(var j=i+1;j<ins.length;j++)if(!ins[j].value.trim()){ins[j].value=v;upd(j);c++}toast(c?'Filled '+c+' empty box'+(c===1?'':'es')+' with '+v+'.':'No empty boxes below.')}});
+    setTimeout(function(){var f=ins.filter(function(x){return !x.value})[0]||ins[0];if(f)f.focus()},50)})}
 
 // ================= CAPACITY across every closet =================
 function capOf(devs,racks){var o={u:0,uT:0,sw:0,swT:0,jk:0,jkT:0,fb:0,fbT:0,ol:0,olT:0};
