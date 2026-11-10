@@ -409,7 +409,7 @@ function kindRow(k){for(var i=0;i<DEVICE_KINDS.length;i++)if(DEVICE_KINDS[i][0]=
 function kindOpts(){return DEVICE_KINDS.map(function(k){return [k[0],k[1]]})}
 function portsTxt(d){return (d.portCount?d.portCount+(d.kind==='pdu'||d.kind==='ups'?' outlets':sfpMain(d)?' SFP+ ports':' ports'):(d.kind==='pdu'||d.kind==='ups'?'no outlets':'no ports'))+(d.sfp?' + '+d.sfp+' SFP+':'')}
 function deviceColor(d){return d.color||DEV_FALLBACK[d.kind]||'#2563eb'}
-var APP_VERSION='4.1.5'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
+var APP_VERSION='4.1.6'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
 
 var Q='"'; // double-quote char used when building the cable rows on the Labels tab
 function siteFold(){var c={};(S.sites||[]).forEach(function(st,i){if(i>0)c[st.id]=true});return c}
@@ -3569,12 +3569,17 @@ function roomsHead(){var b=ui.rmode==='bld';return '<div class="row" style="alig
 function bindRoomsHead(){if(el('rmCards'))el('rmCards').onclick=function(){ui.rmode='cards';ui.room=null;render()};if(el('rmBld'))el('rmBld').onclick=function(){ui.rmode='bld';ui.room=null;render()}}
 function renderRooms(){if(ui.rmode==='bld'&&!ui.room)return renderBuilding();var m=el('main'),M=roomModel(),q=(ui.rq||'').trim().toLowerCase();
   if(ui.room){var g=M.list.filter(function(x){return x.key===ui.room})[0];if(g)return renderRoom(g);ui.room=null}
-  var list=M.list.filter(function(g){if(!q)return true;if(roomNorm(g.room).indexOf(roomNorm(q))>=0||g.room.toLowerCase().indexOf(q)>=0)return true;
+  var bls=buildingList();if(ui.rbld&&!bls.some(function(b){return b.id===ui.rbld}))ui.rbld='';
+  var inB=function(g){return !ui.rbld||g.bd.id===ui.rbld};
+  var list=M.list.filter(function(g){if(!inB(g))return false;if(!q)return true;if(roomNorm(g.room).indexOf(roomNorm(q))>=0||g.room.toLowerCase().indexOf(q)>=0)return true;
     return g.drops.concat(g.things).some(function(e){return e.label.toLowerCase().indexOf(q)>=0||e.t.nodes.some(function(n){return pn(n).toLowerCase().indexOf(q)>=0})})});
-  var h=roomsHead()+'<div class="row" style="align-items:center;margin:4px 0"><p class="muted" style="margin:0;flex:1">Every building · click a room for the full cable paths.</p><button id="colRooms" title="Send every jack of a colour to one room, e.g. cameras to CAM">Rooms by colour…</button></div>'+
-    '<div class="row"><input id="rq" type="search" placeholder="Room, jack or port (e.g. 157, A1, SW1-12)" value="'+esc(ui.rq||'')+'" style="flex:1;max-width:520px;font-size:15px;padding:8px 10px"></div>';
-  if(M.missing.length)h+='<div class="card warnbar"><span class="led warn"></span><b>'+M.missing.length+' labelled jack'+(M.missing.length===1?' has':'s have')+' no room yet.</b> <span class="muted">Rooms are set on each jack so nothing has to be guessed.</span> <button id="fillRooms" class="pri" style="margin-left:8px">Set rooms…</button></div>';
-  if(!list.length)h+='<div class="card muted">'+(M.list.length?'No room matches “'+esc(ui.rq)+'”.':'No rooms yet. Open a jack and fill in “Room this jack serves”, or use Set rooms… above.')+'</div>';
+  var h=roomsHead()+'<div class="row" style="align-items:center;margin:4px 0"><p class="muted" style="margin:0;flex:1">'+(ui.rbld?'Filtered to one building':'Every building')+' · click a room for the full cable paths.</p><button id="colRooms" title="Send every jack of a colour to one room, e.g. cameras to CAM">Rooms by colour…</button></div>'+
+    '<div class="row"><input id="rq" type="search" placeholder="Room, jack or port (e.g. 157, A1, SW1-12)" value="'+esc(ui.rq||'')+'" style="flex:1;max-width:520px;font-size:15px;padding:8px 10px">'+
+    (bls.length>1?'<select id="rbld" title="Show rooms in one building" style="font-size:15px;padding:8px 10px"><option value="">All buildings</option>'+bls.map(function(b){var n=M.list.filter(function(g){return g.bd.id===b.id}).length;return '<option value="'+esc(b.id)+'"'+(ui.rbld===b.id?' selected':'')+'>'+esc(b.name)+' ('+n+')</option>'}).join('')+'</select>':'')+
+    '<span class="muted">'+list.length+' room'+(list.length===1?'':'s')+'</span></div>';
+  var miss=M.missing.filter(function(e){return !ui.rbld||buildingOf(e.p).id===ui.rbld});
+  if(miss.length)h+='<div class="card warnbar"><span class="led warn"></span><b>'+miss.length+' labelled jack'+(miss.length===1?' has':'s have')+' no room yet.</b> <span class="muted">Rooms are set on each jack so nothing has to be guessed.</span> <button id="fillRooms" class="pri" style="margin-left:8px">Set rooms…</button></div>';
+  if(!list.length)h+='<div class="card muted">'+(M.list.length?(q?'No room matches “'+esc(ui.rq)+'”'+(ui.rbld?' in this building':'')+'.':'No rooms in this building yet.'):'No rooms yet. Open a jack and fill in “Room this jack serves”, or use Set rooms… above.')+'</div>';
   else{h+='<div class="roomgrid">';
     list.slice(0,200).forEach(function(g){
       h+='<button class="card roombox" data-room="'+esc(g.key)+'"><div class="rh"><b>'+esc(g.room)+'</b><small>'+esc(g.bd.name)+'</small><span class="rc">'+g.drops.length+' drop'+(g.drops.length===1?'':'s')+'</span></div><ul>'+
@@ -3584,7 +3589,8 @@ function renderRooms(){if(ui.rmode==='bld'&&!ui.room)return renderBuilding();var
   m.innerHTML=h;var inp=el('rq');inp.oninput=function(){ui.rq=inp.value;var pos=inp.selectionStart;renderRooms();var n=el('rq');n.focus();try{n.setSelectionRange(pos,pos)}catch(e){}};
   if(!ui.rqFocused){ui.rqFocused=1;setTimeout(function(){inp.focus()},0)}
   m.querySelectorAll('[data-room]').forEach(function(b){b.onclick=function(){ui.room=b.getAttribute('data-room');renderRooms();window.scrollTo(0,0)}});
-  if(el('fillRooms'))el('fillRooms').onclick=function(){fillRooms(M.missing)};if(el('colRooms'))el('colRooms').onclick=colorRoomsBox;bindRoomsHead()}
+  if(el('rbld'))el('rbld').onchange=function(){ui.rbld=el('rbld').value;renderRooms()};
+  if(el('fillRooms'))el('fillRooms').onclick=function(){fillRooms(miss)};if(el('colRooms'))el('colRooms').onclick=colorRoomsBox;bindRoomsHead()}
 function renderRoom(g){var m=el('main');
   var h='<div class="row"><button id="rback">'+(ui.roomBack==='bld'?'← Building overview':'← All rooms')+'</button><h2 style="margin:0">'+esc(roomNorm(g.room)===g.room.toLowerCase().trim()?'Room '+g.room:g.room)+'</h2><span class="muted">'+esc(g.bd.name)+' · '+g.drops.length+' drop'+(g.drops.length===1?'':'s')+(g.things.length?' · '+g.things.length+' other device'+(g.things.length===1?'':'s'):'')+'</span></div><div class="roomgrid">';
   function card(e,isThing){return '<div class="card roomcard"><div class="rh"><i style="background:'+(e.color||'var(--faint)')+'"></i><div><b>'+esc(isThing?(e.label||'—'):(dropName(e.label,g.room)||'—'))+'</b><small>'+(isThing?esc(thingName(e.color)):'jack “'+esc(e.label||'')+'”')+(e.how==='homerun'?' · homerun':'')+'</small></div><button class="ib" data-edit="'+e.p.id+'" data-hr="'+(e.h?e.h.id:'')+'" title="Edit label and room">Edit</button></div>'+traceHTML({nodes:e.t.nodes,links:e.t.links,room:null,end:null},true)+'</div>'}
