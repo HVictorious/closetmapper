@@ -353,6 +353,8 @@ textarea{width:100%;box-sizing:border-box;font:inherit;background:var(--sunk);co
 .tiles{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0}.tile{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 14px;min-width:120px}.tile b{display:block;font-size:24px;font-family:var(--mono)}.tile span{color:var(--muted);font-size:13px}
 .tblwrap{overflow-x:auto}table.rpt{border-collapse:collapse;width:100%;font-size:14px}table.rpt th,table.rpt td{border-bottom:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}table.rpt th{color:var(--muted);font-weight:600;font-size:12.5px;background:var(--sunk)}
 table.rpt .n{text-align:right;font-family:var(--mono)}table.rpt tr.tot td{font-weight:700;border-top:2px solid var(--line2)}table.rpt tr.rrow{cursor:pointer}table.rpt tr.rrow:hover td{background:var(--raise)}
+.roombox .rmore{display:block;margin:6px -4px -4px;padding:6px 4px;border-top:1px dashed var(--line);color:var(--accent);font-size:13px;font-weight:600;text-align:center;border-radius:0 0 6px 6px}
+.roombox .rmore:hover{background:var(--raise)}
 </style></head><body>
 <div id="shell">
 <aside id="side" aria-label="Sites, closets and racks"></aside>
@@ -409,7 +411,7 @@ function kindRow(k){for(var i=0;i<DEVICE_KINDS.length;i++)if(DEVICE_KINDS[i][0]=
 function kindOpts(){return DEVICE_KINDS.map(function(k){return [k[0],k[1]]})}
 function portsTxt(d){return (d.portCount?d.portCount+(d.kind==='pdu'||d.kind==='ups'?' outlets':sfpMain(d)?' SFP+ ports':' ports'):(d.kind==='pdu'||d.kind==='ups'?'no outlets':'no ports'))+(d.sfp?' + '+d.sfp+' SFP+':'')}
 function deviceColor(d){return d.color||DEV_FALLBACK[d.kind]||'#2563eb'}
-var APP_VERSION='4.1.6'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
+var APP_VERSION='4.1.7'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
 
 var Q='"'; // double-quote char used when building the cable rows on the Labels tab
 function siteFold(){var c={};(S.sites||[]).forEach(function(st,i){if(i>0)c[st.id]=true});return c}
@@ -3581,14 +3583,21 @@ function renderRooms(){if(ui.rmode==='bld'&&!ui.room)return renderBuilding();var
   if(miss.length)h+='<div class="card warnbar"><span class="led warn"></span><b>'+miss.length+' labelled jack'+(miss.length===1?' has':'s have')+' no room yet.</b> <span class="muted">Rooms are set on each jack so nothing has to be guessed.</span> <button id="fillRooms" class="pri" style="margin-left:8px">Set rooms…</button></div>';
   if(!list.length)h+='<div class="card muted">'+(M.list.length?(q?'No room matches “'+esc(ui.rq)+'”'+(ui.rbld?' in this building':'')+'.':'No rooms in this building yet.'):'No rooms yet. Open a jack and fill in “Room this jack serves”, or use Set rooms… above.')+'</div>';
   else{h+='<div class="roomgrid">';
+    var RMAX=5,rexp=ui.rexp||(ui.rexp={});
     list.slice(0,200).forEach(function(g){
-      h+='<button class="card roombox" data-room="'+esc(g.key)+'"><div class="rh"><b>'+esc(g.room)+'</b><small>'+esc(g.bd.name)+'</small><span class="rc">'+g.drops.length+' drop'+(g.drops.length===1?'':'s')+'</span></div><ul>'+
-        g.drops.map(function(e){return '<li><i style="background:'+(e.color||'var(--faint)')+'"></i><span class="dn">'+esc(dropName(e.label,g.room)||'—')+'</span><span class="pe">'+esc(endOf(e))+'</span></li>'}).join('')+
-        g.things.map(function(e){return '<li class="th"><i style="background:'+(e.color||'var(--faint)')+'"></i><span class="dn">'+esc(e.label||'—')+'</span><span class="pe">'+esc(thingName(e.color))+'</span></li>'}).join('')+'</ul></button>'});
+      var lines=g.drops.map(function(e){return '<li><i style="background:'+(e.color||'var(--faint)')+'"></i><span class="dn">'+esc(dropName(e.label,g.room)||'—')+'</span><span class="pe">'+esc(endOf(e))+'</span></li>'}).concat(
+        g.things.map(function(e){return '<li class="th"><i style="background:'+(e.color||'var(--faint)')+'"></i><span class="dn">'+esc(e.label||'—')+'</span><span class="pe">'+esc(thingName(e.color))+'</span></li>'}));
+      var long=lines.length>RMAX,open=long&&(rexp[g.key]||q),cnt=g.drops.length?g.drops.length+' drop'+(g.drops.length===1?'':'s'):'';
+      if(g.things.length){var tt={};g.things.forEach(function(e){var n=thingName(e.color);tt[n]=(tt[n]||0)+1});cnt+=(cnt?' · ':'')+otherTxt(tt)}
+      h+='<div class="card roombox" role="button" tabindex="0" data-room="'+esc(g.key)+'"><div class="rh"><b>'+esc(g.room)+'</b><small>'+esc(g.bd.name)+'</small><span class="rc">'+cnt+'</span></div><ul>'+
+        (long&&!open?lines.slice(0,RMAX):lines).join('')+'</ul>'+
+        (long?'<span class="rmore" role="button" tabindex="0" data-rx="'+esc(g.key)+'">'+(open?'Show fewer ▴':'Show '+(lines.length-RMAX)+' more ▾')+'</span>':'')+'</div>'});
     h+='</div>'}
   m.innerHTML=h;var inp=el('rq');inp.oninput=function(){ui.rq=inp.value;var pos=inp.selectionStart;renderRooms();var n=el('rq');n.focus();try{n.setSelectionRange(pos,pos)}catch(e){}};
   if(!ui.rqFocused){ui.rqFocused=1;setTimeout(function(){inp.focus()},0)}
-  m.querySelectorAll('[data-room]').forEach(function(b){b.onclick=function(){ui.room=b.getAttribute('data-room');renderRooms();window.scrollTo(0,0)}});
+  m.querySelectorAll('[data-rx]').forEach(function(b){var t=function(e){e.stopPropagation();e.preventDefault();var k=b.getAttribute('data-rx');ui.rexp[k]=!ui.rexp[k];var y=window.scrollY;renderRooms();window.scrollTo(0,y)};
+    b.onclick=t;b.onkeydown=function(e){if(e.key==='Enter'||e.key===' ')t(e)}});
+  m.querySelectorAll('.roombox[data-room]').forEach(function(b){var go=function(){ui.room=b.getAttribute('data-room');renderRooms();window.scrollTo(0,0)};b.onclick=go;b.onkeydown=function(e){if(e.target===b&&(e.key==='Enter'||e.key===' ')){e.preventDefault();go()}}});
   if(el('rbld'))el('rbld').onchange=function(){ui.rbld=el('rbld').value;renderRooms()};
   if(el('fillRooms'))el('fillRooms').onclick=function(){fillRooms(miss)};if(el('colRooms'))el('colRooms').onclick=colorRoomsBox;bindRoomsHead()}
 function renderRoom(g){var m=el('main');
