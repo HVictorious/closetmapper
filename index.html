@@ -409,7 +409,7 @@ function kindRow(k){for(var i=0;i<DEVICE_KINDS.length;i++)if(DEVICE_KINDS[i][0]=
 function kindOpts(){return DEVICE_KINDS.map(function(k){return [k[0],k[1]]})}
 function portsTxt(d){return (d.portCount?d.portCount+(d.kind==='pdu'||d.kind==='ups'?' outlets':sfpMain(d)?' SFP+ ports':' ports'):(d.kind==='pdu'||d.kind==='ups'?'no outlets':'no ports'))+(d.sfp?' + '+d.sfp+' SFP+':'')}
 function deviceColor(d){return d.color||DEV_FALLBACK[d.kind]||'#2563eb'}
-var APP_VERSION='4.1.4'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
+var APP_VERSION='4.1.5'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
 
 var Q='"'; // double-quote char used when building the cable rows on the Labels tab
 function siteFold(){var c={};(S.sites||[]).forEach(function(st,i){if(i>0)c[st.id]=true});return c}
@@ -1294,11 +1294,30 @@ function codeRoom(hex){var k=hex&&CABLE_CODES.filter(function(x){return x[0].toL
 function colorRoomsBox(){var rows=CABLE_CODES.map(function(k){return {hex:k[0],name:k[1],use:k[2],room:k[4]||''}});
   var n=function(hex){return S.ports.filter(function(p){return jcol(p).toLowerCase()===hex.toLowerCase()&&(p.label||p.room||cableOf(p.id))}).length};
   modal('Rooms by colour',[],function(){var v={};el('mbox').querySelectorAll('[data-cr]').forEach(function(i){v[i.getAttribute('data-cr')]=i.value.trim()});
-    S.settings.colors=CABLE_CODES.map(function(k){var r=v[k[0]];var o=[k[0],k[1],k[2],codeIsRoom(k)];if(r)o[4]=r;return o});applyPalette();commit();toast('Saved. Jacks of those colours now go to those rooms.')});
+    S.settings.colors=CABLE_CODES.map(function(k){var r=v[k[0]];var o=[k[0],k[1],k[2],codeIsRoom(k)];if(r)o[4]=r;return o});applyPalette();commit();
+    var keep=colorRoomOverrides();if(keep.length)setTimeout(function(){colorRoomReview(keep)},0);else toast('Saved. Jacks of those colours now go to those rooms.')});
+  var ov=colorRoomOverrides(),byHex={};ov.forEach(function(x){byHex[x.hex]=(byHex[x.hex]||0)+1});
   var b=el('mbox'),f=b.querySelector('#mok');var box=document.createElement('div');
   box.innerHTML='<p class="muted" style="margin-top:0">Give a colour a room and every jack of that colour goes there — for example all green camera jacks to <b>CAM</b>. A room typed on an individual jack still takes priority. Leave blank for normal rooms.</p>'+
-    rows.map(function(r){var c=n(r.hex);return '<div style="display:flex;gap:8px;align-items:center;margin:6px 0"><i style="width:18px;height:18px;border-radius:4px;flex:none;background:'+r.hex+'"></i><span style="width:150px;flex:none"><b>'+esc(r.name)+'</b><br><small class="muted">'+esc(r.use||'')+(c?' · '+c+' jack'+(c===1?'':'s'):'')+'</small></span><input data-cr="'+esc(r.hex)+'" value="'+esc(r.room)+'" placeholder="Room for all of these (optional)" style="flex:1;min-width:0" maxlength="40"></div>'}).join('');
-  f.parentNode.parentNode.insertBefore(box,f.parentNode)}
+    rows.map(function(r){var c=n(r.hex);return '<div style="display:flex;gap:8px;align-items:center;margin:6px 0"><i style="width:18px;height:18px;border-radius:4px;flex:none;background:'+r.hex+'"></i><span style="width:150px;flex:none"><b>'+esc(r.name)+'</b><br><small class="muted">'+esc(r.use||'')+(c?' · '+c+' jack'+(c===1?'':'s'):'')+'</small></span><input data-cr="'+esc(r.hex)+'" value="'+esc(r.room)+'" placeholder="Room for all of these (optional)" style="flex:1;min-width:0" maxlength="40"></div>'+(byHex[r.hex]?'<div class="muted" style="font-size:12px;margin:-2px 0 6px 26px">'+byHex[r.hex]+' already ha'+(byHex[r.hex]===1?'s its':'ve their')+' own room — you can move them after saving</div>':'')}).join('')+
+    (ov.length?'<div class="row" style="margin:6px 0"><button type="button" id="crReview">Review jacks that have their own room…</button></div>':'');
+  f.parentNode.parentNode.insertBefore(box,f.parentNode);if(el('crReview'))el('crReview').onclick=function(){el('modal').style.display='none';colorRoomReview(colorRoomOverrides())}}
+// jacks (and homeruns) of a colour that has a room, but that carry a different room of their own
+function colorRoomOverrides(){var out=[];
+  S.ports.forEach(function(p){var d=deviceOfPort(p);if(!d||d.kind!=='patch')return;var hex=jcol(p),cr=codeRoom(hex),own=(p.room||'').trim();
+    if(cr&&own&&roomNorm(own)!==roomNorm(cr))out.push({p:p,hex:hex,own:own,cr:cr,label:p.label||'',where:portWhere(p)})});
+  S.homeruns.forEach(function(h){var q=byId(S.ports,h.port),cr=codeRoom(h.color),own=(h.room||'').trim();if(q&&cr&&own&&roomNorm(own)!==roomNorm(cr))out.push({h:h,p:q,hex:h.color,own:own,cr:cr,label:h.label||'',where:portWhere(q)})});
+  return out.sort(function(a,b){return natCmp(a.cr,b.cr)||natCmp(a.own,b.own)||natCmp(a.label,b.label)})}
+function colorRoomReview(list){if(!list.length)return toast('Every jack of those colours already goes to the colour’s room.');
+  modal('Move jacks to their colour’s room',[],function(){var n=0;el('mbox').querySelectorAll('[data-crx]').forEach(function(c){if(!c.checked)return;var x=list[+c.getAttribute('data-crx')];if(x.h)x.h.room='';else x.p.room='';n++});
+    if(!n){toast('Nothing changed — every jack kept its own room.');return}commit();toast('Moved '+n+' jack'+(n===1?'':'s')+' to '+(list.length&&list.every(function(x){return x.cr===list[0].cr})?list[0].cr:'their colour rooms')+'.')});
+  var f=el('mok');f.textContent='Move checked jacks';var box=document.createElement('div');
+  box.innerHTML='<p class="muted" style="margin-top:0">These jacks have a room typed on them, so they stay put unless you tick them here. Ticked jacks lose their own room and follow the colour’s room from now on. Untick any that really are somewhere else (e.g. a camera you set to Main Office).</p>'+
+    '<div class="row" style="margin:4px 0 8px"><button type="button" id="crAll">Tick all</button><button type="button" id="crNone">Untick all</button></div>'+
+    '<div style="max-height:52vh;overflow:auto;border:1px solid var(--line);border-radius:6px">'+list.map(function(x,i){return '<label style="display:flex;gap:10px;align-items:center;padding:7px 10px;margin:0;border-bottom:1px solid var(--line);color:var(--text);font-size:14px"><input type="checkbox" data-crx="'+i+'" checked style="width:auto">'+
+      '<i style="width:12px;height:12px;border-radius:3px;flex:none;background:'+x.hex+'"></i><span style="flex:1;min-width:0"><b>'+esc(x.label||pn(x.p))+'</b> <span class="muted">· '+esc(pn(x.p))+(x.h?' (homerun)':'')+' · '+esc(x.where.l?closetName(x.where.l):'')+'</span></span><span style="white-space:nowrap">'+esc(x.own)+' → <b>'+esc(x.cr)+'</b></span></label>'}).join('')+'</div>';
+  f.parentNode.parentNode.insertBefore(box,f.parentNode);
+  el('crAll').onclick=function(){box.querySelectorAll('[data-crx]').forEach(function(c){c.checked=true})};el('crNone').onclick=function(){box.querySelectorAll('[data-crx]').forEach(function(c){c.checked=false})}}
 function paletteEditor(){
   var rows=CABLE_CODES.map(function(k){return {orig:k[0],hex:k[0],name:k[1],use:k[2],room:codeIsRoom(k),croom:k[4]||''}});
   function draw(){
