@@ -357,6 +357,12 @@ table.rpt .n{text-align:right;font-family:var(--mono)}table.rpt tr.tot td{font-w
 .roombox .rmore:hover{background:var(--raise)}
 .frt td input.frin{border:1px solid var(--line2);background:var(--sunk);color:var(--text);border-radius:5px;padding:6px 8px;font-size:14px;min-width:120px}
 .frt td input.frin:focus{background:var(--sunk);outline:2px solid var(--accent);outline-offset:0}.frt td input[data-fr]{min-width:130px}.frt td{vertical-align:middle;padding:4px 6px}
+.rmt td{vertical-align:middle}.rmt .jk{font-size:15px}.rmt tr.th td{opacity:.92}.rmt .dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.rmt a{color:var(--text);text-decoration:none;border-bottom:1px dotted var(--faint)}.rmt a:hover{color:var(--accent)}.rmt tr.trrow td{background:var(--sunk);padding:8px 12px}
+.stc{display:inline-block;font-size:12px;padding:2px 8px;border-radius:10px;white-space:nowrap;border:1px solid var(--line2)}.st-live{color:#4ade80;border-color:#166534;background:rgba(22,163,74,.12)}
+.st-open{color:var(--warn);border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.1)}.st-patched{color:var(--muted)}.st-homerun{color:#93c5fd;border-color:#1e3a8a;background:rgba(59,130,246,.1)}
+[data-theme=light] .st-live{color:#15803d}[data-theme=light] .st-homerun{color:#1d4ed8}
+#rsvg .pt.flashpt rect{stroke:var(--accent)!important;stroke-width:4!important}
 </style></head><body>
 <div id="shell">
 <aside id="side" aria-label="Sites, closets and racks"></aside>
@@ -413,7 +419,7 @@ function kindRow(k){for(var i=0;i<DEVICE_KINDS.length;i++)if(DEVICE_KINDS[i][0]=
 function kindOpts(){return DEVICE_KINDS.map(function(k){return [k[0],k[1]]})}
 function portsTxt(d){return (d.portCount?d.portCount+(d.kind==='pdu'||d.kind==='ups'?' outlets':sfpMain(d)?' SFP+ ports':' ports'):(d.kind==='pdu'||d.kind==='ups'?'no outlets':'no ports'))+(d.sfp?' + '+d.sfp+' SFP+':'')}
 function deviceColor(d){return d.color||DEV_FALLBACK[d.kind]||'#2563eb'}
-var APP_VERSION='4.1.8'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
+var APP_VERSION='4.2.0'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
 
 var Q='"'; // double-quote char used when building the cable rows on the Labels tab
 function siteFold(){var c={};(S.sites||[]).forEach(function(st,i){if(i>0)c[st.id]=true});return c}
@@ -3595,35 +3601,69 @@ function renderRooms(){if(ui.rmode==='bld'&&!ui.room)return renderBuilding();var
         (long&&!open?lines.slice(0,RMAX):lines).join('')+'</ul>'+
         (long?'<span class="rmore" role="button" tabindex="0" data-rx="'+esc(g.key)+'">'+(open?'Show fewer ▴':'Show '+(lines.length-RMAX)+' more ▾')+'</span>':'')+'</div>'});
     h+='</div>'}
-  m.innerHTML=h;var inp=el('rq');inp.oninput=function(){ui.rq=inp.value;var pos=inp.selectionStart;renderRooms();var n=el('rq');n.focus();try{n.setSelectionRange(pos,pos)}catch(e){}};
+  m.innerHTML=h;var inp=el('rq');
+  inp.onkeydown=function(e){if(e.key!=='Enter')return;var exact=list.filter(function(g){return roomNorm(g.room)===roomNorm(inp.value)});var pick=exact.length===1?exact[0]:list.length===1?list[0]:null;
+    if(pick){e.preventDefault();ui.room=pick.key;ui.roomBack=null;renderRooms();window.scrollTo(0,0)}};
+  inp.oninput=function(){ui.rq=inp.value;var pos=inp.selectionStart;renderRooms();var n=el('rq');n.focus();try{n.setSelectionRange(pos,pos)}catch(e){}};
   if(!ui.rqFocused){ui.rqFocused=1;setTimeout(function(){inp.focus()},0)}
   m.querySelectorAll('[data-rx]').forEach(function(b){var t=function(e){e.stopPropagation();e.preventDefault();var k=b.getAttribute('data-rx');ui.rexp[k]=!ui.rexp[k];var y=window.scrollY;renderRooms();window.scrollTo(0,y)};
     b.onclick=t;b.onkeydown=function(e){if(e.key==='Enter'||e.key===' ')t(e)}});
   m.querySelectorAll('.roombox[data-room]').forEach(function(b){var go=function(){ui.room=b.getAttribute('data-room');renderRooms();window.scrollTo(0,0)};b.onclick=go;b.onkeydown=function(e){if(e.target===b&&(e.key==='Enter'||e.key===' ')){e.preventDefault();go()}}});
   if(el('rbld'))el('rbld').onchange=function(){ui.rbld=el('rbld').value;renderRooms()};
   if(el('fillRooms'))el('fillRooms').onclick=function(){fillRooms(miss)};if(el('colRooms'))el('colRooms').onclick=colorRoomsBox;bindRoomsHead()}
-function renderRoom(g){var m=el('main');
-  var h='<div class="row"><button id="rback">'+(ui.roomBack==='bld'?'← Building overview':'← All rooms')+'</button><h2 style="margin:0">'+esc(roomNorm(g.room)===g.room.toLowerCase().trim()?'Room '+g.room:g.room)+'</h2><span class="muted">'+esc(g.bd.name)+' · '+g.drops.length+' drop'+(g.drops.length===1?'':'s')+(g.things.length?' · '+g.things.length+' other device'+(g.things.length===1?'':'s'):'')+'</span></div><div class="roomgrid">';
-  function card(e,isThing){return '<div class="card roomcard"><div class="rh"><i style="background:'+(e.color||'var(--faint)')+'"></i><div><b>'+esc(isThing?(e.label||'—'):(dropName(e.label,g.room)||'—'))+'</b><small>'+(isThing?esc(thingName(e.color)):'jack “'+esc(e.label||'')+'”')+(e.how==='homerun'?' · homerun':'')+'</small></div><button class="ib" data-edit="'+e.p.id+'" data-hr="'+(e.h?e.h.id:'')+'" title="Edit label and room">Edit</button></div>'+traceHTML({nodes:e.t.nodes,links:e.t.links,room:null,end:null},true)+'</div>'}
-  g.drops.forEach(function(e){h+=card(e,false)});
-  if(g.things.length){h+='</div><h3>Also in this room</h3><div class="roomgrid">';g.things.forEach(function(e){h+=card(e,true)})}
-  m.innerHTML=h+'</div>';
+function renderRoom(g){var m=el('main'),title=/^\d/.test(g.room)?'Room '+g.room:g.room;
+  var all=g.drops.map(function(e){return {e:e,thing:false}}).concat(g.things.map(function(e){return {e:e,thing:true}}));
+  all.forEach(function(x){var e=x.e,w=portWhere(e.p);x.l=w.l;x.sw=switchEnd(e);x.name=x.thing?(e.label||'—'):(dropName(e.label,g.room)||e.label||'—');
+    x.status=e.how==='homerun'?'homerun':x.sw?'live':e.t.nodes.length>1?'patched':'open';x.type=x.thing?thingName(e.color):(codeOfHex(e.color)?codeOfHex(e.color)[2]:'Data');
+    x.iss=ISX[e.p.id]||0});
+  var live=all.filter(function(x){return !x.thing&&x.status==='live'}).length,cl={};all.forEach(function(x){var k=x.l?x.l.id:'?';(cl[k]=cl[k]||[]).push(x)});
+  var tt={};g.things.forEach(function(e){var k=thingName(e.color);tt[k]=(tt[k]||0)+1});
+  var cls=Object.keys(cl).sort(function(a,b){return natCmp(closetName(byId(S.locations,a)),closetName(byId(S.locations,b)))});
+  var stLabel={live:'Patched to switch',patched:'Patched (no switch)',open:'Not patched',homerun:'Homerun'};
+  var h='<div class="row" style="align-items:center"><button id="rback">'+(ui.roomBack==='bld'?'← Building overview':'← All rooms')+'</button><h2 style="margin:0">'+esc(title)+'</h2><span class="muted">'+esc(g.bd.name)+'</span>'+
+    '<span style="flex:1"></span><button id="rmEdit" title="Change the room or label of these jacks in one go">Edit jacks…</button><button id="rmPrint">Print room</button></div>'+
+    '<div class="tiles"><div class="tile"><b>'+g.drops.length+'</b><span>drop'+(g.drops.length===1?'':'s')+'</span></div>'+
+      (g.drops.length?'<div class="tile"><b>'+live+'</b><span>patched to a switch</span></div><div class="tile"><b>'+(g.drops.length-live)+'</b><span>not patched</span></div>':'')+
+      (g.things.length?'<div class="tile"><b>'+g.things.length+'</b><span>'+esc(otherTxt(tt).replace(/^\d+\s/,''))+'</span></div>':'')+
+      '<div class="tile"><b>'+cls.length+'</b><span>closet'+(cls.length===1?'':'s')+': '+esc(cls.map(function(id){return closetName(byId(S.locations,id))}).join(', '))+'</span></div></div>';
+  cls.forEach(function(id){var L=byId(S.locations,id),rows=cl[id].sort(function(a,b){return (a.thing-b.thing)||natCmp(a.name,b.name)});
+    h+='<h3 style="margin:16px 0 6px">'+(L?'<a href="#" data-goloc="'+L.id+'">'+esc(closetName(L))+'</a>':'?')+' <span class="muted" style="font-weight:400;font-size:13px">· '+rows.length+' jack'+(rows.length===1?'':'s')+(L&&siteOf(L)?'':'')+'</span></h3>'+
+      '<div class="tblwrap"><table class="rpt rmt"><tr><th>Jack</th><th>Label</th><th>Type</th><th>Patch panel</th><th>Switch port</th><th>Status</th><th></th></tr>'+
+      rows.map(function(x){var e=x.e,i=all.indexOf(x);return '<tr class="'+(x.thing?'th':'')+'"><td><b class="jk">'+esc(x.name)+'</b>'+(x.iss?' <span class="isb" title="Open issue">'+x.iss+'</span>':'')+'</td><td class="muted">'+esc(e.label||'')+'</td>'+
+        '<td><span class="dot" style="background:'+(e.color||'var(--faint)')+'"></span>'+esc(x.type)+'</td><td class="mono"><a href="#" data-gop="'+e.p.id+'">'+esc(pn(e.p))+'</a>'+(e.how==='homerun'?' <span class="muted">(homerun)</span>':'')+'</td>'+
+        '<td class="mono">'+(x.sw?'<a href="#" data-gop="'+x.sw.id+'">'+esc(pn(x.sw))+'</a>':'<span class="muted">—</span>')+'</td>'+
+        '<td><span class="stc st-'+x.status+'">'+stLabel[x.status]+'</span></td>'+
+        '<td style="white-space:nowrap;text-align:right"><button class="ib" data-rtr="'+i+'" title="Show the full cable path">Path ▾</button><button class="ib" data-edit="'+e.p.id+'" data-hr="'+(e.h?e.h.id:'')+'" title="Edit label and room">Edit</button></td></tr>'+
+        '<tr class="trrow" data-trr="'+i+'" style="display:none"><td colspan="7">'+traceHTML({nodes:e.t.nodes,links:e.t.links,room:null,end:null},true)+'</td></tr>'}).join('')+'</table></div>'});
+  m.innerHTML=h;
   el('rback').onclick=function(){ui.room=null;if(ui.roomBack==='bld'){ui.rmode='bld';ui.roomBack=null}renderRooms()};
+  el('rmEdit').onclick=function(){fillRooms(all.map(function(x){var e=x.e;return {p:e.p,h:e.h,how:e.how,label:e.label||'',color:e.color,room:e.room,cur:true}}),g.room)};
+  el('rmPrint').onclick=function(){roomPrint(g,all,title)};
+  m.querySelectorAll('[data-rtr]').forEach(function(b){b.onclick=function(){var r=m.querySelector('[data-trr="'+b.getAttribute('data-rtr')+'"]'),on=r.style.display==='none';r.style.display=on?'':'none';b.textContent=on?'Path ▴':'Path ▾'}});
+  m.querySelectorAll('[data-gop]').forEach(function(a){a.onclick=function(ev){ev.preventDefault();var p=byId(S.ports,a.getAttribute('data-gop')),d=p&&deviceOfPort(p),r=d&&rackOfDevice(d);if(!r)return;ui.loc=r.locId;ui.rack=r.id;ui.zoom=null;ui.view='rack';ui.entered=true;render();
+    setTimeout(function(){var el2=document.querySelector('#rsvg .pt[data-p="'+p.id+'"]');if(el2){el2.scrollIntoView({block:'center',inline:'center'});el2.classList.add('flashpt');setTimeout(function(){el2.classList.remove('flashpt')},2600)}},80)}});
+  m.querySelectorAll('[data-goloc]').forEach(function(a){a.onclick=function(ev){ev.preventDefault();ui.loc=a.getAttribute('data-goloc');ui.view='map';ui.entered=true;render()}});
   m.querySelectorAll('[data-edit]').forEach(function(b){b.onclick=function(){var hid=b.getAttribute('data-hr');if(hid)editHomerun(byId(S.homeruns,hid));else editPort(b.getAttribute('data-edit'))}});
   bindTrace(m)}
+function roomPrint(g,all,title){var rows=all.slice().sort(function(a,b){return natCmp(a.l?closetName(a.l):'',b.l?closetName(b.l):'')||(a.thing-b.thing)||natCmp(a.name,b.name)});
+  var st={live:'Patched to switch',patched:'Patched (no switch)',open:'Not patched',homerun:'Homerun'};
+  var h='<!doctype html><html><head><meta charset="utf-8"><title>'+esc(title)+' — '+esc(g.bd.name)+'</title><style>body{font:12px/1.4 -apple-system,Segoe UI,Arial,sans-serif;color:#111;padding:14mm;margin:0}h1{font-size:20px;margin:0}.sub{color:#555;margin:2px 0 12px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #bbb;padding:4px 6px;text-align:left}th{background:#eee}@page{margin:0}@media print{.noprint{display:none}}</style></head><body>'+
+    '<div class="noprint" style="margin-bottom:10px"><button onclick="print()">Print / save as PDF</button></div><h1>'+esc(title)+'</h1><div class="sub">'+esc(g.bd.name)+' · '+g.drops.length+' drop'+(g.drops.length===1?'':'s')+(g.things.length?' · '+g.things.length+' other device'+(g.things.length===1?'':'s'):'')+' · '+esc(new Date().toLocaleDateString())+'</div>'+
+    '<table><tr><th>Jack</th><th>Label</th><th>Type</th><th>Closet</th><th>Patch panel</th><th>Switch port</th><th>Status</th></tr>'+rows.map(function(x){return '<tr><td><b>'+esc(x.name)+'</b></td><td>'+esc(x.e.label||'')+'</td><td>'+esc(x.type)+'</td><td>'+esc(x.l?closetName(x.l):'')+'</td><td>'+esc(pn(x.e.p))+'</td><td>'+esc(x.sw?pn(x.sw):'')+'</td><td>'+st[x.status]+'</td></tr>'}).join('')+'</table></body></html>';
+  var w=null;try{w=window.open('','_blank')}catch(e){}if(w&&w.document){w.document.open();w.document.write(h);w.document.close();setTimeout(function(){try{w.focus();w.print()}catch(e){}},400)}else dl(fileSafe(title)+'.html',h,'text/html')}
 // one place to give every labelled jack its room: suggestions come from the label, you confirm or change them
-function fillRooms(missing){var rows=missing.slice(0,400);
-  modal('Set rooms for '+missing.length+' jack'+(missing.length===1?'':'s'),[],function(){var n=0,nl=0;
+function fillRooms(missing,roomName){var rows=missing.slice(0,400);
+  modal(roomName?'Edit the jacks in '+(/^\d/.test(roomName)?'room ':'')+roomName:'Set rooms for '+missing.length+' jack'+(missing.length===1?'':'s'),[],function(){var n=0,nl=0;
     el('mbox').querySelectorAll('input[data-fr]').forEach(function(inp){var i=+inp.getAttribute('data-fr'),e=rows[i],v=inp.value.trim(),lb=el('mbox').querySelector('input[data-fl="'+i+'"]'),nlab=lb?lb.value.trim():e.label;
       if(nlab!==e.label){if(e.h)e.h.label=nlab;else e.p.label=nlab;nl++}
-      if(!v)return;if(e.h)e.h.room=v;else e.p.room=v;n++});
-    if(!n&&!nl){toast('Nothing to save — type a room in at least one box.',1);return false}
+      if(!v)return;if(e.cur&&v===(e.room||''))return;if(e.h)e.h.room=v;else e.p.room=v;n++});
+    if(!n&&!nl){if(roomName){return}toast('Nothing to save — type a room in at least one box.',1);return false}
     commit();toast('Set the room on '+n+' jack'+(n===1?'':'s')+(nl?' and changed '+nl+' label'+(nl===1?'':'s'):'')+'. Ctrl+Z undoes it.')},function(){
     var box=el('mbox'),w=document.createElement('div');w.style.minWidth='min(760px,90vw)';
     var known={};S.ports.concat(S.homeruns).forEach(function(x){var r=(x.room||'').trim();if(r)known[r]=1});CABLE_CODES.forEach(function(k){if(k[4])known[k[4]]=1});
     w.innerHTML='<p class="muted" style="margin:0 0 8px">Type the room each jack serves (rooms you have used before are suggested). Boxes left empty are skipped. You can fix a label here too. <b>Enter</b> moves to the next jack; <b>Fill down</b> copies a room to every empty box below it.</p>'+
       '<datalist id="frRooms">'+Object.keys(known).sort(natCmp).map(function(r){return '<option value="'+esc(r)+'">'}).join('')+'</datalist>'+
-      '<div style="max-height:56vh;overflow:auto"><table class="frt"><tr><th>Jack</th><th>Label</th><th>Room</th><th></th><th>Shows as</th></tr>'+rows.map(function(e,i){var gs=guessRoom(e.label,e.color);
+      '<div style="max-height:56vh;overflow:auto"><table class="frt"><tr><th>Jack</th><th>Label</th><th>Room</th><th></th><th>Shows as</th></tr>'+rows.map(function(e,i){var gs=e.cur?(e.room||''):guessRoom(e.label,e.color);
         return '<tr><td class="mono" style="white-space:nowrap">'+esc(pn(e.p))+(e.how==='homerun'?' <span class="muted">(homerun)</span>':'')+'<br><small class="muted">'+esc((portWhere(e.p).l||{}).name||'')+'</small></td>'+
           '<td><input class="frin" data-fl="'+i+'" value="'+esc(e.label)+'"></td><td><input class="frin" data-fr="'+i+'" list="frRooms" value="'+esc(gs)+'" placeholder="Room…"></td>'+
           '<td><button type="button" class="ib" data-fd="'+i+'" title="Copy this room to every empty box below">Fill down</button></td><td class="muted" data-sa="'+i+'">'+esc(gs?dropName(e.label,gs):'')+'</td></tr>'}).join('')+'</table></div>'+
@@ -4136,6 +4176,12 @@ function gsMatch(fields,toks){
 function gsSearch(q){
   var toks=gsNorm(q).split(/\s+/).filter(Boolean),out=[];if(!toks.length)return {toks:toks,res:out};
   var LIM=8,n;
+  // rooms: an exact room name comes first; picking one opens the room
+  var qn=roomNorm(q),rl=roomModel().list.filter(function(g){return gsMatch([g.room,'room '+g.room,g.bd.name],toks)});
+  rl.sort(function(a,b){return (roomNorm(b.room)===qn)-(roomNorm(a.room)===qn)||(roomNorm(b.room).indexOf(qn)===0)-(roomNorm(a.room).indexOf(qn)===0)||natCmp(a.room,b.room)});
+  rl.slice(0,LIM).forEach(function(g){var tt={};g.things.forEach(function(e){var k=thingName(e.color);tt[k]=(tt[k]||0)+1});
+    out.push({g:'Rooms',t:(/^\d/.test(g.room)?'Room ':'')+g.room,s:g.bd.name+' · '+[g.drops.length?g.drops.length+' drop'+(g.drops.length===1?'':'s'):'',otherTxt(tt)].filter(Boolean).join(' · '),
+      go:function(){ui.view='rooms';ui.rmode='cards';ui.room=g.key;ui.roomBack=null;render();window.scrollTo(0,0)}})});
   n=0;S.locations.forEach(function(l){if(n<LIM&&gsMatch([l.name,l.label,siteOf(l)?siteOf(l).name:''],toks)){n++;
     out.push({g:'Locations',t:locFull(l)+(l.label?' — '+l.label:''),s:S.racks.filter(function(r){return r.locId===l.id}).length+' rack(s)',go:function(){ui.loc=l.id;ui.view='map';render()}})}});
   n=0;S.racks.forEach(function(r){var l=locOfRack(r);if(n<LIM&&gsMatch([r.name,r.label,l?locFull(l):''],toks)){n++;
