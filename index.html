@@ -350,6 +350,9 @@ textarea{width:100%;box-sizing:border-box;font:inherit;background:var(--sunk);co
 .rack.rt-floor,.rack.rt-wall{margin:18px 8px 8px;border-color:#2a3440;box-shadow:0 0 0 6px #2a3440,0 -10px 0 6px #2a3440,inset 0 0 0 1px #7dd3fc22;border-radius:3px}
 .rack.rt-wall{box-shadow:0 0 0 6px #2a3440,0 -10px 0 6px #56616e,inset 0 0 0 1px #7dd3fc22}.rack.rt-2post{margin-left:8px;border-color:transparent;box-shadow:-6px 0 0 #3a4552,6px 0 0 #3a4552,0 6px 0 2px #3a4552}
 .rk .ty{font-size:10px;color:var(--faint);margin-left:6px}
+.tiles{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0}.tile{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 14px;min-width:120px}.tile b{display:block;font-size:24px;font-family:var(--mono)}.tile span{color:var(--muted);font-size:13px}
+.tblwrap{overflow-x:auto}table.rpt{border-collapse:collapse;width:100%;font-size:14px}table.rpt th,table.rpt td{border-bottom:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}table.rpt th{color:var(--muted);font-weight:600;font-size:12.5px;background:var(--sunk)}
+table.rpt .n{text-align:right;font-family:var(--mono)}table.rpt tr.tot td{font-weight:700;border-top:2px solid var(--line2)}table.rpt tr.rrow{cursor:pointer}table.rpt tr.rrow:hover td{background:var(--raise)}
 </style></head><body>
 <div id="shell">
 <aside id="side" aria-label="Sites, closets and racks"></aside>
@@ -406,7 +409,7 @@ function kindRow(k){for(var i=0;i<DEVICE_KINDS.length;i++)if(DEVICE_KINDS[i][0]=
 function kindOpts(){return DEVICE_KINDS.map(function(k){return [k[0],k[1]]})}
 function portsTxt(d){return (d.portCount?d.portCount+(d.kind==='pdu'||d.kind==='ups'?' outlets':sfpMain(d)?' SFP+ ports':' ports'):(d.kind==='pdu'||d.kind==='ups'?'no outlets':'no ports'))+(d.sfp?' + '+d.sfp+' SFP+':'')}
 function deviceColor(d){return d.color||DEV_FALLBACK[d.kind]||'#2563eb'}
-var APP_VERSION='4.0.9'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
+var APP_VERSION='4.1.0'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
 
 var Q='"'; // double-quote char used when building the cable rows on the Labels tab
 function siteFold(){var c={};(S.sites||[]).forEach(function(st,i){if(i>0)c[st.id]=true});return c}
@@ -3438,11 +3441,90 @@ function roomModel(){var es=roomEntries(),seen={},groups={},order=[],missing=[];
   list.forEach(function(g){g.drops.sort(function(a,b){return natCmp(dropName(a.label,g.room),dropName(b.label,g.room))})});
   return {list:list,missing:missing}}
 function endOf(e){var n=e.t.nodes,first=n[0],last=n[n.length-1];return n.length>1?pn(first)+' → '+pn(last):pn(first)+(e.how==='homerun'?' (homerun)':' · not patched')}
-function renderRooms(){var m=el('main'),M=roomModel(),q=(ui.rq||'').trim().toLowerCase();
+// ================= Building overview: every room in a building, how many ports, and which closet each goes to =================
+function buildingList(){var seen={},out=[];
+  S.sites.forEach(function(st){if(S.locations.some(function(l){return l.siteId===st.id})){seen['s:'+st.id]=1;out.push({id:'s:'+st.id,name:st.name})}});
+  S.locations.forEach(function(l){if(!siteOf(l)){out.push({id:'l:'+l.id,name:l.label||l.name})}});
+  return out.sort(function(a,b){return natCmp(a.name,b.name)})}
+function locBuilding(l){var st=l&&siteOf(l);return st?'s:'+st.id:l?'l:'+l.id:null}
+function closetName(l){return l?(l.label||l.name):'?'}
+function switchEnd(e){for(var i=e.t.nodes.length-1;i>=0;i--){var d=deviceOfPort(e.t.nodes[i]);if(d&&d.kind==='switch')return e.t.nodes[i]}return null}
+function panelEnd(e){return e.how==='homerun'?e.p:e.p}
+function buildingReport(bid){var M=roomModel(),bname=(buildingList().filter(function(b){return b.id===bid})[0]||{}).name||'';
+  var closets=S.locations.filter(function(l){return locBuilding(l)===bid}).sort(function(a,b){return natCmp(closetName(a),closetName(b))});
+  var cs={};closets.forEach(function(l){cs[l.id]={l:l,rooms:{},ports:0,live:0,other:0}});
+  var rooms=M.list.filter(function(g){return g.bd.id===bid}).map(function(g){
+    var r={g:g,room:g.room,ports:g.drops.length,live:0,closets:{},other:{},rows:[]};
+    function add(e,isThing){var w=portWhere(e.p),l=w.l,sw=switchEnd(e),c=l&&cs[l.id];
+      if(!isThing){r.closets[l?l.id:'?']=(r.closets[l?l.id:'?']||0)+1;if(sw)r.live++;if(c){c.ports++;c.rooms[g.key]=1;if(sw)c.live++}}
+      else{var tn=thingName(e.color);r.other[tn]=(r.other[tn]||0)+1;if(c){c.other++;c.rooms[g.key]=1}}
+      r.rows.push({jack:isThing?(e.label||''):(dropName(e.label,g.room)||e.label||''),label:e.label||'',type:isThing?thingName(e.color):(e.how==='homerun'?'Homerun':'Drop'),
+        closet:l?closetName(l):'',closetId:l?l.id:'',panel:pn(e.p),sw:sw?pn(sw):'',status:sw?'Patched to switch':(e.t.nodes.length>1?'Patched (no switch)':'Not patched'),thing:isThing})}
+    g.drops.forEach(function(e){add(e,false)});g.things.forEach(function(e){add(e,true)});return r});
+  var missing=M.missing.filter(function(e){return buildingOf(e.p).id===bid}).length;
+  var tot={rooms:rooms.length,ports:0,live:0,other:0};rooms.forEach(function(r){tot.ports+=r.ports;tot.live+=r.live;Object.keys(r.other).forEach(function(k){tot.other+=r.other[k]})});
+  return {id:bid,name:bname,rooms:rooms,closets:closets.map(function(l){var c=cs[l.id];c.nrooms=Object.keys(c.rooms).length;return c}),tot:tot,missing:missing}}
+function otherTxt(o){return Object.keys(o).sort().map(function(k){return o[k]+' '+k.toLowerCase()+(o[k]>1&&!/s$/i.test(k)?'s':'')}).join(', ')}
+function closetsTxt(r,withCounts){var ks=Object.keys(r.closets);return ks.map(function(id){var l=byId(S.locations,id);return closetName(l)+(withCounts&&ks.length>1?' ('+r.closets[id]+')':withCounts?'':'')}).join(', ')}
+function renderBuilding(){var m=el('main'),bl=buildingList();
+  if(!bl.length){m.innerHTML=roomsHead()+'<div class="card muted">Add a closet first.</div>';bindRoomsHead();return}
+  var cur=byId(S.locations,ui.loc);if(!ui.bld||!bl.some(function(b){return b.id===ui.bld}))ui.bld=(cur&&locBuilding(cur))||bl[0].id;
+  var R=buildingReport(ui.bld),pct=R.tot.ports?Math.round(R.tot.live*100/R.tot.ports):0;
+  var h=roomsHead()+'<div class="row" style="align-items:center"><label style="margin:0">Building <select id="bldSel">'+bl.map(function(b){return '<option value="'+esc(b.id)+'"'+(b.id===ui.bld?' selected':'')+'>'+esc(b.name)+'</option>'}).join('')+'</select></label>'+
+    '<span style="flex:1"></span><button id="bldPrint" class="pri">Print / save as PDF</button><button id="bldCsv">Download rooms (CSV)</button><button id="bldPorts">Download port list (CSV)</button></div>'+
+    '<div class="tiles"><div class="tile"><b>'+R.tot.rooms+'</b><span>rooms</span></div><div class="tile"><b>'+R.tot.ports+'</b><span>ports to rooms</span></div><div class="tile"><b>'+R.tot.live+'</b><span>patched to a switch ('+pct+'%)</span></div><div class="tile"><b>'+R.closets.length+'</b><span>closet'+(R.closets.length===1?'':'s')+'</span></div>'+(R.tot.other?'<div class="tile"><b>'+R.tot.other+'</b><span>cameras, readers &amp; other</span></div>':'')+'</div>'+
+    (R.missing?'<div class="card warnbar"><span class="led warn"></span><b>'+R.missing+' labelled jack'+(R.missing===1?' has':'s have')+' no room yet</b> <span class="muted">and '+(R.missing===1?'isn’t':'aren’t')+' counted below.</span> <button id="fillRooms2" style="margin-left:8px">Set rooms…</button></div>':'')+
+    '<h3>Closets</h3><div class="tblwrap"><table class="rpt"><tr><th>Closet</th><th class="n">Rooms served</th><th class="n">Ports to rooms</th><th class="n">Patched to switch</th><th class="n">Not patched</th><th class="n">Other devices</th></tr>'+
+    R.closets.map(function(c){return '<tr><td><a href="#" data-goloc="'+c.l.id+'">'+esc(closetName(c.l))+'</a></td><td class="n">'+c.nrooms+'</td><td class="n">'+c.ports+'</td><td class="n">'+c.live+'</td><td class="n">'+(c.ports-c.live)+'</td><td class="n">'+(c.other||'')+'</td></tr>'}).join('')+
+    '<tr class="tot"><td>Total</td><td class="n">'+R.tot.rooms+'</td><td class="n">'+R.tot.ports+'</td><td class="n">'+R.tot.live+'</td><td class="n">'+(R.tot.ports-R.tot.live)+'</td><td class="n">'+(R.tot.other||'')+'</td></tr></table></div>'+
+    '<h3>Rooms</h3>'+(R.rooms.length?'<div class="tblwrap"><table class="rpt"><tr><th>Room</th><th class="n">Ports</th><th>Goes to closet</th><th class="n">Patched to switch</th><th>Other devices</th></tr>'+
+    R.rooms.map(function(r){return '<tr class="rrow" data-room="'+esc(r.g.key)+'"><td><b>'+esc(r.room)+'</b></td><td class="n">'+r.ports+'</td><td>'+esc(closetsTxt(r,true))+'</td><td class="n">'+r.live+(r.ports&&r.live<r.ports?' <span class="muted">/ '+r.ports+'</span>':'')+'</td><td class="muted">'+esc(otherTxt(r.other))+'</td></tr>'}).join('')+'</table></div>':'<div class="card muted">No rooms in this building yet. Give jacks a room (open a jack → “Room this jack serves”).</div>');
+  m.innerHTML=h;bindRoomsHead();
+  el('bldSel').onchange=function(){ui.bld=el('bldSel').value;render()};
+  el('bldCsv').onclick=function(){bldCsv(R,false)};el('bldPorts').onclick=function(){bldCsv(R,true)};el('bldPrint').onclick=function(){bldPrint(R)};
+  if(el('fillRooms2'))el('fillRooms2').onclick=function(){fillRooms(roomModel().missing.filter(function(e){return buildingOf(e.p).id===ui.bld}))};
+  m.querySelectorAll('[data-goloc]').forEach(function(a){a.onclick=function(e){e.preventDefault();ui.loc=a.getAttribute('data-goloc');ui.view='map';ui.entered=true;render()}});
+  m.querySelectorAll('tr[data-room]').forEach(function(t){t.onclick=function(){ui.room=t.getAttribute('data-room');ui.rmode='cards';ui.roomBack='bld';render();window.scrollTo(0,0)}})}
+function csvCell(v){v=String(v==null?'':v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
+function fileSafe(t){return String(t).replace(/[^\w\- ]+/g,'').trim().replace(/\s+/g,'-')||'building'}
+function bldCsv(R,ports){var rows;
+  if(ports){rows=[['Building','Room','Jack','Label','Type','Closet','Patch panel / jack port','Switch port','Status']];
+    R.rooms.forEach(function(r){r.rows.forEach(function(x){rows.push([R.name,r.room,x.jack,x.label,x.type,x.closet,x.panel,x.sw,x.status])})})}
+  else{rows=[['Building','Room','Ports','Goes to closet','Patched to switch','Not patched','Other devices']];
+    R.rooms.forEach(function(r){rows.push([R.name,r.room,r.ports,closetsTxt(r,true),r.live,r.ports-r.live,otherTxt(r.other)])});
+    rows.push([]);rows.push(['Closet','Rooms served','Ports to rooms','Patched to switch','Not patched','Other devices']);
+    R.closets.forEach(function(c){rows.push([closetName(c.l),c.nrooms,c.ports,c.live,c.ports-c.live,c.other])})}
+  dl(fileSafe(R.name)+(ports?'-port-list':'-rooms')+'.csv','﻿'+rows.map(function(r){return r.map(csvCell).join(',')}).join('\r\n'),'text/csv');toast('Downloaded — opens in Excel.')}
+function bldPrint(R){var d=new Date(),pct=R.tot.ports?Math.round(R.tot.live*100/R.tot.ports):0;
+  var css='body{font:12px/1.4 -apple-system,Segoe UI,Arial,sans-serif;color:#111;margin:0;padding:14mm}h1{font-size:20px;margin:0}h2{font-size:15px;margin:18px 0 6px;border-bottom:2px solid #111;padding-bottom:3px}h3{font-size:13px;margin:14px 0 4px}'+
+    '.sub{color:#555;margin:2px 0 10px}.tiles{display:flex;gap:10px;margin:10px 0}.tile{border:1px solid #bbb;border-radius:4px;padding:6px 10px}.tile b{font-size:18px;display:block}'+
+    'table{border-collapse:collapse;width:100%;margin-bottom:6px;page-break-inside:auto}tr{page-break-inside:avoid}th,td{border:1px solid #bbb;padding:3px 6px;text-align:left;vertical-align:top}th{background:#eee}td.n,th.n{text-align:right}tr.tot td{font-weight:700;background:#f6f6f6}'+
+    '.room{page-break-inside:avoid;margin-bottom:8px}.muted{color:#666}.warn{background:#fff4d6;border:1px solid #e0b84d;padding:6px 8px;border-radius:4px}@page{margin:0}@media print{.noprint{display:none}}';
+  var h='<!doctype html><html><head><meta charset="utf-8"><title>'+esc(R.name)+' — rooms and closets</title><style>'+css+'</style></head><body>'+
+    '<div class="noprint" style="margin-bottom:10px"><button onclick="print()">Print / save as PDF</button></div>'+
+    '<h1>'+esc(R.name)+' — rooms and closets</h1><div class="sub">Closet Mapper report · '+esc(d.toLocaleDateString([],{year:'numeric',month:'long',day:'numeric'}))+(cloudOn()&&CS.team?' · '+esc(CS.team.name):'')+'</div>'+
+    '<div class="tiles"><div class="tile"><b>'+R.tot.rooms+'</b>rooms</div><div class="tile"><b>'+R.tot.ports+'</b>ports to rooms</div><div class="tile"><b>'+R.tot.live+'</b>patched to a switch ('+pct+'%)</div><div class="tile"><b>'+R.closets.length+'</b>closets</div>'+(R.tot.other?'<div class="tile"><b>'+R.tot.other+'</b>cameras, readers &amp; other</div>':'')+'</div>'+
+    (R.missing?'<p class="warn">'+R.missing+' labelled jack'+(R.missing===1?' has':'s have')+' no room set and '+(R.missing===1?'is':'are')+' not included.</p>':'')+
+    '<h2>Closets</h2><table><tr><th>Closet</th><th class="n">Rooms served</th><th class="n">Ports to rooms</th><th class="n">Patched to switch</th><th class="n">Not patched</th><th class="n">Other devices</th></tr>'+
+    R.closets.map(function(c){return '<tr><td>'+esc(closetName(c.l))+'</td><td class="n">'+c.nrooms+'</td><td class="n">'+c.ports+'</td><td class="n">'+c.live+'</td><td class="n">'+(c.ports-c.live)+'</td><td class="n">'+(c.other||'')+'</td></tr>'}).join('')+
+    '<tr class="tot"><td>Total</td><td class="n">'+R.tot.rooms+'</td><td class="n">'+R.tot.ports+'</td><td class="n">'+R.tot.live+'</td><td class="n">'+(R.tot.ports-R.tot.live)+'</td><td class="n">'+(R.tot.other||'')+'</td></tr></table>'+
+    '<h2>Rooms</h2><table><tr><th>Room</th><th class="n">Ports</th><th>Goes to closet</th><th class="n">Patched to switch</th><th>Other devices</th></tr>'+
+    R.rooms.map(function(r){return '<tr><td><b>'+esc(r.room)+'</b></td><td class="n">'+r.ports+'</td><td>'+esc(closetsTxt(r,true))+'</td><td class="n">'+r.live+'</td><td>'+esc(otherTxt(r.other))+'</td></tr>'}).join('')+'</table>'+
+    '<h2>Rooms by closet</h2>'+R.closets.filter(function(c){return c.ports||c.other}).map(function(c){var rs=R.rooms.filter(function(r){return r.closets[c.l.id]||r.rows.some(function(x){return x.closetId===c.l.id})});
+      return '<h3>'+esc(closetName(c.l))+' <span class="muted">· '+c.nrooms+' room'+(c.nrooms===1?'':'s')+' · '+c.ports+' port'+(c.ports===1?'':'s')+'</span></h3><p style="margin:2px 0 6px">'+rs.map(function(r){var n=r.closets[c.l.id]||0;return esc(r.room)+(n?' ('+n+')':'')}).join(', ')+'</p>'}).join('')+
+    '<h2>Port detail</h2>'+R.rooms.map(function(r){return '<div class="room"><h3>'+esc(/^\d/.test(r.room)?'Room '+r.room:r.room)+' <span class="muted">· '+r.ports+' port'+(r.ports===1?'':'s')+'</span></h3><table><tr><th>Jack</th><th>Type</th><th>Closet</th><th>Patch panel / port</th><th>Switch port</th><th>Status</th></tr>'+
+      r.rows.map(function(x){return '<tr><td>'+esc(x.jack)+'</td><td>'+esc(x.type)+'</td><td>'+esc(x.closet)+'</td><td>'+esc(x.panel)+'</td><td>'+esc(x.sw)+'</td><td>'+esc(x.status)+'</td></tr>'}).join('')+'</table></div>'}).join('')+
+    '</body></html>';
+  var w=null;try{w=window.open('','_blank')}catch(e){}
+  if(w&&w.document){w.document.open();w.document.write(h);w.document.close();setTimeout(function(){try{w.focus();w.print()}catch(e){}},400)}
+  else{dl(fileSafe(R.name)+'-rooms-report.html',h,'text/html');toast('Pop-ups are blocked, so the report was downloaded — open it and print to PDF.')}}
+function roomsHead(){var b=ui.rmode==='bld';return '<div class="row" style="align-items:center"><h2 style="margin:0">Rooms</h2><div class="seg" style="margin:0;min-width:300px"><button id="rmCards"'+(b?'':' class="on"')+'>Room lookup</button><button id="rmBld"'+(b?' class="on"':'')+'>Building overview</button></div></div>'}
+function bindRoomsHead(){if(el('rmCards'))el('rmCards').onclick=function(){ui.rmode='cards';ui.room=null;render()};if(el('rmBld'))el('rmBld').onclick=function(){ui.rmode='bld';ui.room=null;render()}}
+function renderRooms(){if(ui.rmode==='bld'&&!ui.room)return renderBuilding();var m=el('main'),M=roomModel(),q=(ui.rq||'').trim().toLowerCase();
   if(ui.room){var g=M.list.filter(function(x){return x.key===ui.room})[0];if(g)return renderRoom(g);ui.room=null}
   var list=M.list.filter(function(g){if(!q)return true;if(roomNorm(g.room).indexOf(roomNorm(q))>=0||g.room.toLowerCase().indexOf(q)>=0)return true;
     return g.drops.concat(g.things).some(function(e){return e.label.toLowerCase().indexOf(q)>=0||e.t.nodes.some(function(n){return pn(n).toLowerCase().indexOf(q)>=0})})});
-  var h='<div class="row"><h2 style="margin:0">Rooms</h2><span class="muted">every building · click a room for the full cable paths</span></div>'+
+  var h=roomsHead()+'<p class="muted" style="margin:4px 0">Every building · click a room for the full cable paths.</p>'+
     '<div class="row"><input id="rq" type="search" placeholder="Room, jack or port (e.g. 157, A1, SW1-12)" value="'+esc(ui.rq||'')+'" style="flex:1;max-width:520px;font-size:15px;padding:8px 10px"></div>';
   if(M.missing.length)h+='<div class="card warnbar"><span class="led warn"></span><b>'+M.missing.length+' labelled jack'+(M.missing.length===1?' has':'s have')+' no room yet.</b> <span class="muted">Rooms are set on each jack so nothing has to be guessed.</span> <button id="fillRooms" class="pri" style="margin-left:8px">Set rooms…</button></div>';
   if(!list.length)h+='<div class="card muted">'+(M.list.length?'No room matches “'+esc(ui.rq)+'”.':'No rooms yet. Open a jack and fill in “Room this jack serves”, or use Set rooms… above.')+'</div>';
@@ -3455,14 +3537,14 @@ function renderRooms(){var m=el('main'),M=roomModel(),q=(ui.rq||'').trim().toLow
   m.innerHTML=h;var inp=el('rq');inp.oninput=function(){ui.rq=inp.value;var pos=inp.selectionStart;renderRooms();var n=el('rq');n.focus();try{n.setSelectionRange(pos,pos)}catch(e){}};
   if(!ui.rqFocused){ui.rqFocused=1;setTimeout(function(){inp.focus()},0)}
   m.querySelectorAll('[data-room]').forEach(function(b){b.onclick=function(){ui.room=b.getAttribute('data-room');renderRooms();window.scrollTo(0,0)}});
-  if(el('fillRooms'))el('fillRooms').onclick=function(){fillRooms(M.missing)}}
+  if(el('fillRooms'))el('fillRooms').onclick=function(){fillRooms(M.missing)};bindRoomsHead()}
 function renderRoom(g){var m=el('main');
-  var h='<div class="row"><button id="rback">← All rooms</button><h2 style="margin:0">'+esc(roomNorm(g.room)===g.room.toLowerCase().trim()?'Room '+g.room:g.room)+'</h2><span class="muted">'+esc(g.bd.name)+' · '+g.drops.length+' drop'+(g.drops.length===1?'':'s')+(g.things.length?' · '+g.things.length+' other device'+(g.things.length===1?'':'s'):'')+'</span></div><div class="roomgrid">';
+  var h='<div class="row"><button id="rback">'+(ui.roomBack==='bld'?'← Building overview':'← All rooms')+'</button><h2 style="margin:0">'+esc(roomNorm(g.room)===g.room.toLowerCase().trim()?'Room '+g.room:g.room)+'</h2><span class="muted">'+esc(g.bd.name)+' · '+g.drops.length+' drop'+(g.drops.length===1?'':'s')+(g.things.length?' · '+g.things.length+' other device'+(g.things.length===1?'':'s'):'')+'</span></div><div class="roomgrid">';
   function card(e,isThing){return '<div class="card roomcard"><div class="rh"><i style="background:'+(e.color||'var(--faint)')+'"></i><div><b>'+esc(isThing?(e.label||'—'):(dropName(e.label,g.room)||'—'))+'</b><small>'+(isThing?esc(thingName(e.color)):'jack “'+esc(e.label||'')+'”')+(e.how==='homerun'?' · homerun':'')+'</small></div><button class="ib" data-edit="'+e.p.id+'" data-hr="'+(e.h?e.h.id:'')+'" title="Edit label and room">Edit</button></div>'+traceHTML({nodes:e.t.nodes,links:e.t.links,room:null,end:null},true)+'</div>'}
   g.drops.forEach(function(e){h+=card(e,false)});
   if(g.things.length){h+='</div><h3>Also in this room</h3><div class="roomgrid">';g.things.forEach(function(e){h+=card(e,true)})}
   m.innerHTML=h+'</div>';
-  el('rback').onclick=function(){ui.room=null;renderRooms()};
+  el('rback').onclick=function(){ui.room=null;if(ui.roomBack==='bld'){ui.rmode='bld';ui.roomBack=null}renderRooms()};
   m.querySelectorAll('[data-edit]').forEach(function(b){b.onclick=function(){var hid=b.getAttribute('data-hr');if(hid)editHomerun(byId(S.homeruns,hid));else editPort(b.getAttribute('data-edit'))}});
   bindTrace(m)}
 // one place to give every labelled jack its room: suggestions come from the label, you confirm or change them
