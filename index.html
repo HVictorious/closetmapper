@@ -409,7 +409,7 @@ function kindRow(k){for(var i=0;i<DEVICE_KINDS.length;i++)if(DEVICE_KINDS[i][0]=
 function kindOpts(){return DEVICE_KINDS.map(function(k){return [k[0],k[1]]})}
 function portsTxt(d){return (d.portCount?d.portCount+(d.kind==='pdu'||d.kind==='ups'?' outlets':sfpMain(d)?' SFP+ ports':' ports'):(d.kind==='pdu'||d.kind==='ups'?'no outlets':'no ports'))+(d.sfp?' + '+d.sfp+' SFP+':'')}
 function deviceColor(d){return d.color||DEV_FALLBACK[d.kind]||'#2563eb'}
-var APP_VERSION='4.1.1'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
+var APP_VERSION='4.1.2'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
 
 var Q='"'; // double-quote char used when building the cable rows on the Labels tab
 function siteFold(){var c={};(S.sites||[]).forEach(function(st,i){if(i>0)c[st.id]=true});return c}
@@ -2937,6 +2937,8 @@ function authBox(mode,msg){mode=mode||ui.authMode||'in';ui.authMode=mode;closeOv
   o.querySelectorAll('[data-am]').forEach(function(b){b.onclick=function(){authBox(b.getAttribute('data-am'))}});
   // only offer Microsoft once it is switched on in Supabase (otherwise Supabase shows a raw error page)
   msEnabled().then(function(on){if(on&&el('aMs')){el('aMs').style.display='';el('aOr').style.display=''}});
+  authSettings().then(function(c){if(!c.noEmail)return;if(mode==='link')return authBox('in');if(el('aLink'))el('aLink').style.visibility='hidden';
+    if(el('aForgot'))el('aForgot').onclick=function(e){e.preventDefault();el('aErr').innerHTML='Password resets need email, which isn’t set up for Closet Mapper. Ask your team owner to set a new password for you in Supabase (Authentication → Users).'}});
   el('aMs').onclick=function(){var b=el('aMs');b.disabled=true;el('aErr').textContent='';
     SB.auth.signInWithOAuth({provider:'azure',options:{scopes:'email openid profile',redirectTo:location.origin+location.pathname}}).then(function(r){if(r.error){b.disabled=false;
       el('aErr').textContent=/not enabled|Unsupported provider/i.test(r.error.message)?'Microsoft sign-in is not switched on yet — use your email for now.':r.error.message}}).catch(function(e){b.disabled=false;el('aErr').textContent=String(e.message||e)})};
@@ -2952,9 +2954,12 @@ function authBox(mode,msg){mode=mode||ui.authMode||'in';ui.authMode=mode;closeOv
       else if(r.data.session)afterLogin(r.data.session.user)}).catch(function(err){btn.disabled=false;el('aErr').textContent=String(err.message||err)})};
   setTimeout(function(){var f=el('aN')||el('aE');if(f)f.focus()},0)}
 var msOn=null;
-function msEnabled(){if(msOn!==null)return Promise.resolve(msOn);
-  return fetch(CLOUD.url+'/auth/v1/settings',{headers:{apikey:CLOUD.key}}).then(function(r){return r.json()}).then(function(j){msOn=!!(j&&j.external&&j.external.azure);return msOn}).catch(function(){return false})}
-function newPasswordBox(){var o=ovl('pwov','<h2 style="margin-top:0">Choose a new password</h2><form id="npF"><label>New password<input id="npP" type="password" minlength="8" required autocomplete="new-password"></label><div id="npE" style="color:var(--bad);font-size:13px;min-height:18px"></div><button class="pri" type="submit" style="width:100%">Save password</button></form>',62);
+// sign-in settings from Supabase: is Microsoft on, and are new accounts confirmed without an email?
+var authCfg=null;
+function authSettings(){if(authCfg)return Promise.resolve(authCfg);
+  return fetch(CLOUD.url+'/auth/v1/settings',{headers:{apikey:CLOUD.key}}).then(function(r){return r.json()}).then(function(j){authCfg={ms:!!(j&&j.external&&j.external.azure),noEmail:!!(j&&j.mailer_autoconfirm)};msOn=authCfg.ms;return authCfg}).catch(function(){return {ms:false,noEmail:false}})}
+function msEnabled(){if(msOn!==null)return Promise.resolve(msOn);return authSettings().then(function(c){return c.ms})}
+function newPasswordBox(){var o=ovl('pwov','<h2 style="margin-top:0">Choose a new password</h2><form id="npF"><label>New password<input id="npP" type="password" minlength="8" required autocomplete="new-password"></label><div id="npE" style="color:var(--bad);font-size:13px;min-height:18px"></div><div class="row"><button class="pri" type="submit" style="flex:1">Save password</button><button type="button" id="npX">Cancel</button></div></form>',62);el('npX').onclick=function(){closeOvl('pwov')};
   el('npF').onsubmit=function(e){e.preventDefault();SB.auth.updateUser({password:el('npP').value}).then(function(r){if(r.error){el('npE').textContent=r.error.message;return}closeOvl('pwov');toast('Password changed.')})}}
 function signOut(){if(CS.gen!==CS.pushedGen&&!confirm('Some changes have not reached the server yet. Sign out anyway?'))return;
   cloudStopLive();CS.team=null;CS.teams=[];CS.loaded=false;SB.auth.signOut().then(function(){try{['cmUser','cmTeams','cmDocTeam',KEY].forEach(function(k){localStorage.removeItem(k)})}catch(e){}location.reload()})}
@@ -3071,7 +3076,7 @@ function teamBox(){var t=CS.team;if(!t)return;var owner=CS.role==='owner';
       w.innerHTML=(owner?'<div class="row"><input id="tmName" value="'+esc(t.name)+'" style="flex:1"><button id="tmRen">Rename</button></div>':'<p class="muted">Your role: <b>'+esc(CS.role)+'</b></p>')+
         '<h3>Members</h3><table><tr><th>Name</th><th>Email</th><th>Now</th><th>Role</th><th></th></tr>'+mem.map(function(m){var me=m.user_id===CS.user.id,on=me?[prPayload()]:PR.others.filter(function(o){return o.uid===m.user_id}),
           where=on.length?on.map(function(o){var lc=o.loc&&byId(S.locations,o.loc);return o.idle?'away':lc?'in '+(lc.label||lc.name):'online'}).join(', '):'';
-          return '<tr><td><b>'+esc(me?meLabel():nameOr(m.name,m.email))+'</b>'+(me?' <span class="muted">(you)</span> <a href="#" id="tmMe" style="font-size:12px">change</a>':'')+'</td><td class="muted">'+esc(m.email||'(unknown)')+'</td><td>'+(where?'<span class="led on"></span>'+esc(where):'<span class="muted">—</span>')+'</td><td>'+roleSel(m)+'</td><td>'+(owner&&m.user_id!==CS.user.id?'<button class="ib dng" data-rm="'+m.user_id+'">Remove</button>':'')+'</td></tr>'}).join('')+'</table>'+
+          return '<tr><td><b>'+esc(me?meLabel():nameOr(m.name,m.email))+'</b>'+(me?' <span class="muted">(you)</span> <a href="#" id="tmMe" style="font-size:12px">change name</a> · <a href="#" id="tmPw" style="font-size:12px">change password</a>':'')+'</td><td class="muted">'+esc(m.email||'(unknown)')+'</td><td>'+(where?'<span class="led on"></span>'+esc(where):'<span class="muted">—</span>')+'</td><td>'+roleSel(m)+'</td><td>'+(owner&&m.user_id!==CS.user.id?'<button class="ib dng" data-rm="'+m.user_id+'">Remove</button>':'')+'</td></tr>'}).join('')+'</table>'+
         (owner?'<h3>Invite someone</h3><div class="row"><input id="tmEm" type="email" placeholder="coworker@school.org" style="flex:1"><select id="tmRole"><option value="editor">Editor — can change the map</option><option value="viewer">Viewer — can only look</option></select><button class="pri" id="tmInv">Invite</button><button id="tmInvM" title="Invite them and open your mail app with a message telling them how to join">Invite &amp; email</button></div>'+
           '<p class="muted" style="font-size:12px">They sign up at <b>'+esc(location.host||'closetmapper.cloud')+'</b> with that email and join automatically. Closet Mapper doesn’t send email itself — <b>Invite &amp; email</b> opens your mail app with the message ready to send.</p>'+
           (inv.length?'<table><tr><th>Waiting to sign up</th><th>Role</th><th></th></tr>'+inv.map(function(i){return '<tr><td>'+esc(i.email)+'</td><td>'+esc(i.role)+'</td><td style="white-space:nowrap"><button class="ib" data-mailinv="'+esc(i.email)+'" data-mrole="'+esc(i.role)+'">Email</button><button class="ib" data-uninv="'+i.id+'">Cancel</button></td></tr>'}).join('')+'</table>':''):'')+
@@ -3079,6 +3084,7 @@ function teamBox(){var t=CS.team;if(!t)return;var owner=CS.role==='owner';
         '<div class="row" style="margin-top:14px"><button class="dng" id="tmLeave">Leave this team</button></div>';
       function reopen(){el('modal').style.display='none';teamBox()}
       if(el('tmMe'))el('tmMe').onclick=function(e){e.preventDefault();el('modal').style.display='none';nameBox()};
+      if(el('tmPw'))el('tmPw').onclick=function(e){e.preventDefault();el('modal').style.display='none';newPasswordBox()};
       if(el('tmRen'))el('tmRen').onclick=function(){var n=el('tmName').value.trim();if(!n)return;SB.from('teams').update({name:n}).eq('id',t.id).then(function(r){if(r.error)return toast(r.error.message,1);t.name=n;drawBackup();reopen()})};
       w.querySelectorAll('[data-role]').forEach(function(s){s.onchange=function(){SB.from('members').update({role:s.value}).eq('team_id',t.id).eq('user_id',s.getAttribute('data-role')).then(function(r){if(r.error)toast(r.error.message,1);else toast('Role changed.')})}});
       w.querySelectorAll('[data-rm]').forEach(function(b){b.onclick=function(){if(!confirm('Remove this person from the team?'))return;SB.from('members').delete().eq('team_id',t.id).eq('user_id',b.getAttribute('data-rm')).then(function(r){if(r.error)toast(r.error.message,1);reopen()})}});
@@ -3182,10 +3188,10 @@ function pushMyName(){var n=myName();if(n&&SB)SB.rpc('set_my_name',{n:n}).then(f
 function inviteMailto(em,role,team){var url=(/^https?:$/.test(location.protocol)?location.origin+location.pathname:'https://closetmapper.cloud/');
   var sub='Join '+team+' on Closet Mapper',me=meLabel();
   var body='Hi,\n\nI’ve added you to our Closet Mapper team “'+team+'” so you can '+(role==='viewer'?'look up':'view and update')+' our network closets, racks and cabling.\n\n'+
-    'To join:\n1. Go to '+url+'\n2. Choose “Create account” and sign up with this email address: '+em+'\n   (use this exact address so the invite matches)\n3. Click the link in the confirmation email you get (check spam if it doesn’t show up), then sign in.\n\n'+
+    'To join:\n1. Go to '+url+'\n2. Choose “Create account” and sign up with your name, this email address: '+em+', and a password of your choice.\n   (use this exact address so the invite matches)\n'+(authCfg&&authCfg.noEmail?'3. That’s it — you’re signed straight in.\n\n':'3. If you get a confirmation email, click the link in it (check spam), then sign in.\n\n')+
     'You’ll be added to the team automatically as '+(role==='viewer'?'a viewer (read-only)':'an editor')+'. On an iPad you can add it to your Home Screen from the Share menu.\n\nThanks,\n'+me;
   return 'mailto:'+encodeURIComponent(em)+'?subject='+encodeURIComponent(sub)+'&body='+encodeURIComponent(body)}
-function openInviteMail(em,role,team){var a=document.createElement('a');a.href=inviteMailto(em,role,team);a.target='_self';document.body.appendChild(a);a.click();a.remove()}
+function openInviteMail(em,role,team){if(!authCfg){authSettings().then(function(){openInviteMail(em,role,team)});return}var a=document.createElement('a');a.href=inviteMailto(em,role,team);a.target='_self';document.body.appendChild(a);a.click();a.remove()}
 function teamMembers(tid){return SB.from('members').select('user_id,email,role,name').eq('team_id',tid).then(function(r){if(r.error)return SB.from('members').select('user_id,email,role').eq('team_id',tid);return r})}
 // ---- photos in cloud storage (cached on the device in IndexedDB)
 function dataUrlBlob(d){var p=d.split(','),b=atob(p[1]),a=new Uint8Array(b.length);for(var i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return new Blob([a],{type:(p[0].match(/:(.*?);/)||[])[1]||'image/jpeg'})}
