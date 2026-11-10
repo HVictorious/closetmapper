@@ -1294,8 +1294,9 @@ function codeRoom(hex){var k=hex&&CABLE_CODES.filter(function(x){return x[0].toL
 function colorRoomsBox(){var rows=CABLE_CODES.map(function(k){return {hex:k[0],name:k[1],use:k[2],room:k[4]||''}});
   var n=function(hex){return S.ports.filter(function(p){return jcol(p).toLowerCase()===hex.toLowerCase()&&(p.label||p.room||cableOf(p.id))}).length};
   modal('Rooms by colour',[],function(){var v={};el('mbox').querySelectorAll('[data-cr]').forEach(function(i){v[i.getAttribute('data-cr')]=i.value.trim()});
+    var changed={};CABLE_CODES.forEach(function(k){if((k[4]||'')!==(v[k[0]]||''))changed[k[0].toLowerCase()]=1});
     S.settings.colors=CABLE_CODES.map(function(k){var r=v[k[0]];var o=[k[0],k[1],k[2],codeIsRoom(k)];if(r)o[4]=r;return o});applyPalette();commit();
-    var keep=colorRoomOverrides();if(keep.length)setTimeout(function(){colorRoomReview(keep)},0);else toast('Saved. Jacks of those colours now go to those rooms.')});
+    var keep=colorRoomOverrides().filter(function(x){return changed[String(x.hex).toLowerCase()]});if(keep.length)setTimeout(function(){colorRoomReview(keep)},0);else toast('Saved. Jacks of those colours now go to those rooms.')});
   var ov=colorRoomOverrides(),byHex={};ov.forEach(function(x){byHex[x.hex]=(byHex[x.hex]||0)+1});
   var b=el('mbox'),f=b.querySelector('#mok');var box=document.createElement('div');
   box.innerHTML='<p class="muted" style="margin-top:0">Give a colour a room and every jack of that colour goes there — for example all green camera jacks to <b>CAM</b>. A room typed on an individual jack still takes priority. Leave blank for normal rooms.</p>'+
