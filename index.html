@@ -378,7 +378,7 @@ table.rpt .n{text-align:right;font-family:var(--mono)}table.rpt tr.tot td{font-w
   <button id="bExp" style="display:none">Export JSON</button><button id="bImp" style="display:none">Import JSON</button>
   <input type="file" id="file" accept=".json" style="display:none">
  </div>
- <div id="tabs" role="tablist"><button id="bMap">Map</button><button id="bRack">Rack view</button><button id="bLab">Labels</button><button id="bSug">Suggestions</button><button id="bPrt">Print labels</button><button id="bOpt" title="Plan a closet from scratch without changing Rack view">Optimizer</button><span class="tabsep"></span><button id="bRoom" title="Find everything that serves a room, across every closet">Rooms</button><button id="bFloor" title="Pin rooms on floor plans">Floor plans</button><button id="bCap" title="Free ports, jacks, strands and rack space in every closet">Capacity</button><button id="bNet" title="Every closet and the fiber and cable links between them">Network</button><button id="bIss" title="Problems reported on ports, devices and closets">Issues</button></div>
+ <div id="tabs" role="tablist"><button id="bMap">Map</button><button id="bRack">Rack view</button><button id="bLab">Labels</button><button id="bSug">Suggestions</button><button id="bPrt">Print labels</button><button id="bOpt" title="Plan a closet from scratch without changing Rack view">Optimizer</button><span class="tabsep"></span><button id="bRoom" title="Find everything that serves a room, across every closet">Rooms</button><button id="bFloor" title="Pin rooms on floor plans">Floor plans</button><button id="bCap" title="Free ports, ports, strands and rack space in every closet">Capacity</button><button id="bNet" title="Every closet and the fiber and cable links between them">Network</button><button id="bIss" title="Problems reported on ports, devices and closets">Issues</button></div>
 </div>
 <main id="main"></main>
 </div>
@@ -419,7 +419,7 @@ function kindRow(k){for(var i=0;i<DEVICE_KINDS.length;i++)if(DEVICE_KINDS[i][0]=
 function kindOpts(){return DEVICE_KINDS.map(function(k){return [k[0],k[1]]})}
 function portsTxt(d){return (d.portCount?d.portCount+(d.kind==='pdu'||d.kind==='ups'?' outlets':sfpMain(d)?' SFP+ ports':' ports'):(d.kind==='pdu'||d.kind==='ups'?'no outlets':'no ports'))+(d.sfp?' + '+d.sfp+' SFP+':'')}
 function deviceColor(d){return d.color||DEV_FALLBACK[d.kind]||'#2563eb'}
-var APP_VERSION='4.2.0'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
+var APP_VERSION='4.2.1'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
 
 var Q='"'; // double-quote char used when building the cable rows on the Labels tab
 function siteFold(){var c={};(S.sites||[]).forEach(function(st,i){if(i>0)c[st.id]=true});return c}
@@ -743,7 +743,7 @@ function addDevice(rackId,preset,atU){
     {label:'Firmware',value:''},{label:'Default VLAN',value:''},
     {label:'Managed from / uplink',value:''},{label:'Warranty ends',type:'date',value:''},
     {label:'Notes',value:''},
-    {label:'Patch panel jacks (patch panels only)',options:JACK_OPTS,value:preset&&preset.removable||''},
+    {label:'Keystone jacks (patch panels only)',options:JACK_OPTS,value:preset&&preset.removable||''},
     {label:'Port numbering (devices with more than 24 ports)',options:NUM_OPTS,value:''},
     {label:'Extra SFP+ ports (switches, routers, firewalls — separate from the ports above)',type:'number',value:preset?(preset.sfp||0):4},
     {label:'Main ports are (switches, routers, firewalls)',options:[['','Copper RJ45 (regular Ethernet)'],['sfp','SFP+ cages (fiber — e.g. a core switch)']],value:preset&&preset.media||''}];
@@ -803,7 +803,7 @@ function editDevice(d){setTimeout(mediaField,0);modal('Device: '+dn(d),[
   {label:'Default VLAN',value:d.vlan||''},{label:'Managed from / uplink',value:d.mgmt||''},
   {label:'Warranty ends',type:'date',value:d.warranty||''},
   {label:'Notes',value:d.notes||''},
-  {label:'Patch panel jacks (patch panels only)',options:JACK_OPTS,value:d.removable||''},
+  {label:'Keystone jacks (patch panels only)',options:JACK_OPTS,value:d.removable||''},
   {label:'Port numbering (devices with more than 24 ports)',options:NUM_OPTS,value:d.numbering||''},
   {label:'Extra SFP+ ports (switches, routers, firewalls — separate from the ports above)',type:'number',value:d.sfp||0},
   {label:'Main ports are (switches, routers, firewalls)',options:[['','Copper RJ45 (regular Ethernet)'],['sfp','SFP+ cages (fiber — e.g. a core switch)']],value:d.media||''}],
@@ -856,7 +856,7 @@ function editPort(pid){
   var p=byId(S.ports,pid);if(!p)return;
   var c=cableOf(pid),hr=homerunOf(pid),pw=powerOf(pid),partner=c?byId(S.ports,c.a===pid?c.b:c.a):null,d=deviceOfPort(p);
   var info=d?'<p class="muted" style="margin:2px 0 8px">'+esc(dn(d))+' · '+pWord(p).toLowerCase()+(c?' · cable: '+esc(cn(c)):hr?' · homerun: '+esc(hr.label||'(no label)'):pw?' · powers '+esc(dn(byId(S.devices,pw.dev)||{name:'?'})):' · not connected')+'</p>':'';
-  modal('Port '+pn(p)+'',[{label:'Port label',value:p.label},{label:'Port color',options:CABLE_COLORS,value:p.color||''},{label:'Room this jack serves',value:p.room||''}],function(v){p.label=v[0].trim();p.color=v[1];p.room=v[2].trim();commit()},function(){
+  modal('Port '+pn(p)+'',[{label:'Port label',value:p.label},{label:'Port color',options:CABLE_COLORS,value:p.color||''},{label:'Room this port serves',value:p.room||''}],function(v){p.label=v[0].trim();p.color=v[1];p.room=v[2].trim();commit()},function(){
     roomFieldSetup(p);
     var box=el('mbox');
     box.querySelector('h3').insertAdjacentHTML('afterend',info);
@@ -909,15 +909,15 @@ function editPort(pid){
     el('mok').onclick=function(){p.label=el('f0').value.trim();p.color=el('f1').value;el('modal').style.display='none';commit()};
   })}
 
-// ---- homeruns: a cable from an end device / wall jack straight to a switch port (no patch panel port)
+// ---- homeruns: a cable from an end device / wall plate straight to a switch port (no patch panel port)
 function newHomerun(pid){var p=byId(S.ports,pid);if(!p)return;
-  modal('Homerun to '+pn(p),[{label:'Where does it come from? (room, jack ID…)',value:''},
+  modal('Homerun to '+pn(p),[{label:'Where does it come from? (room, port ID…)',value:''},
     {label:'Color code',options:CABLE_COLORS,value:p.color||''},{label:'Notes (length, type…)',value:''}],function(v){
     if(cableOf(pid)||homerunOf(pid)||powerOf(pid)){toast('That port is already in use.',1);return false}
     S.homeruns.push({id:uid(),port:pid,label:v[0].trim(),color:v[1],notes:v[2].trim()});commit()},function(){
     if(p.color){el('f1').disabled=true;el('f1').title='Follows the color of the port'}})}
 function editHomerun(h){var p=byId(S.ports,h.port);if(!h||!p)return;
-  modal('Homerun '+(h.label||'')+' → '+pn(p),[{label:'Where does it come from? (room, jack ID…)',value:h.label||''},
+  modal('Homerun '+(h.label||'')+' → '+pn(p),[{label:'Where does it come from? (room, port ID…)',value:h.label||''},
     {label:'Color code',options:CABLE_COLORS,value:h.color||''},{label:'Notes (length, type…)',value:h.notes||''},{label:'Room it serves',value:h.room||''}],function(v){
     h.label=v[0].trim();h.color=v[1];h.notes=v[2].trim();h.room=v[3].trim();commit()},function(){
     var box=el('mbox'),row=document.createElement('div');row.className='row';
@@ -929,7 +929,7 @@ function editHomerun(h){var p=byId(S.ports,h.port);if(!h||!p)return;
       el('f1').parentNode.insertBefore(n,el('f1').nextSibling)}})}
 function bulkHomerun(did){var d=byId(S.devices,did);
   modal('Bulk homeruns on '+dn(d),[{label:'From port',type:'number',value:1},{label:'To port',type:'number',value:d.portCount},
-    {label:'Label pattern — {i} counts from 1, {n} is the port number (blank = no label)',value:'Jack {i}'},
+    {label:'Label pattern — {i} counts from 1, {n} is the port number (blank = no label)',value:'Port {i}'},
     {label:'Color code',options:CABLE_COLORS,value:''}],function(v){
     var a=parseInt(v[0],10),b=parseInt(v[1],10);if(!(a>=1&&b>=a)){toast('Check the port range.',1);return false}
     var made=0,skipped=0;
@@ -1049,9 +1049,9 @@ function quickConnect(pid){
     function(){
       function fill(){var f=free(el('f0').value);el('f1').innerHTML=f.map(function(x){return '<option value="'+x.id+'">'+pWord(x)+(x.label?' — '+esc(x.label):'')+'</option>'}).join('');el('f1').value=pick(el('f0').value)}
       el('f0').onchange=fill;
-      // next jack on the same panel/switch that has nothing plugged in
+      // next port on the same panel/switch that has nothing plugged in
       var sib=famOf(p).slice().sort(function(a,b){return a.num-b.num}).filter(function(x){return x.num>p.num&&!cableOf(x.id)&&!homerunOf(x.id)&&!powerOf(x.id)}),nx=sib[0];
-      var b=document.createElement('button');b.className='pri';b.textContent=nx?'Connect & next jack ('+(nx.sfp?'SFP+ ':'')+nx.num+') →':'Connect (last jack)';
+      var b=document.createElement('button');b.className='pri';b.textContent=nx?'Connect & next port ('+(nx.sfp?'SFP+ ':'')+nx.num+') →':'Connect (last port)';
       b.onclick=function(){var v=el('f1').value;if(!v){toast('That device has no free ports.',1);return}
         var q=byId(S.ports,v);link(p,q);qc.dev=q.devId;qc.num=q.num;qc.sfp=!!q.sfp;save();render();
         if(nx)quickConnect(nx.id);else{el('modal').style.display='none';toast('Connected.')}};
@@ -1296,34 +1296,34 @@ function applyPalette(){var c=S.settings&&S.settings.colors;
   CABLE_CODES=(Array.isArray(c)&&c.length)?c:DEFAULT_CODES;
   CABLE_COLORS=[['','None set']].concat(CABLE_CODES.map(function(k){return [k[0],k[1]+' — '+k[2]]}))}
 applyPalette();
-// does a jack of this colour carry a ROOM name? (data jacks, APs: yes; cameras, door readers: no — they are things in a room)
+// does a port of this colour carry a ROOM name? (data ports, APs: yes; cameras, door readers: no — they are things in a room)
 function defRoom(use){return !/camera|access control|door|reader|badge|card/i.test(use||'')}
 function codeIsRoom(k){return k[3]==null?defRoom(k[2]):!!k[3]}
-// a colour can send every jack of that colour to one room (e.g. all green camera jacks → "CAM"); a room typed on a jack still wins
+// a colour can send every port of that colour to one room (e.g. all green camera ports → "CAM"); a room typed on a port still wins
 function codeRoom(hex){var k=hex&&CABLE_CODES.filter(function(x){return x[0].toLowerCase()===String(hex).toLowerCase()})[0];return k&&k[4]?String(k[4]).trim():''}
 function colorRoomsBox(){var rows=CABLE_CODES.map(function(k){return {hex:k[0],name:k[1],use:k[2],room:k[4]||''}});
   var n=function(hex){return S.ports.filter(function(p){return jcol(p).toLowerCase()===hex.toLowerCase()&&(p.label||p.room||cableOf(p.id))}).length};
   modal('Rooms by colour',[],function(){var v={};el('mbox').querySelectorAll('[data-cr]').forEach(function(i){v[i.getAttribute('data-cr')]=i.value.trim()});
     var changed={};CABLE_CODES.forEach(function(k){if((k[4]||'')!==(v[k[0]]||''))changed[k[0].toLowerCase()]=1});
     S.settings.colors=CABLE_CODES.map(function(k){var r=v[k[0]];var o=[k[0],k[1],k[2],codeIsRoom(k)];if(r)o[4]=r;return o});applyPalette();commit();
-    var keep=colorRoomOverrides().filter(function(x){return changed[String(x.hex).toLowerCase()]});if(keep.length)setTimeout(function(){colorRoomReview(keep)},0);else toast('Saved. Jacks of those colours now go to those rooms.')});
+    var keep=colorRoomOverrides().filter(function(x){return changed[String(x.hex).toLowerCase()]});if(keep.length)setTimeout(function(){colorRoomReview(keep)},0);else toast('Saved. Ports of those colours now go to those rooms.')});
   var ov=colorRoomOverrides(),byHex={};ov.forEach(function(x){byHex[x.hex]=(byHex[x.hex]||0)+1});
   var b=el('mbox'),f=b.querySelector('#mok');var box=document.createElement('div');
-  box.innerHTML='<p class="muted" style="margin-top:0">Give a colour a room and every jack of that colour goes there — for example all green camera jacks to <b>CAM</b>. A room typed on an individual jack still takes priority. Leave blank for normal rooms.</p>'+
-    rows.map(function(r){var c=n(r.hex);return '<div style="display:flex;gap:8px;align-items:center;margin:6px 0"><i style="width:18px;height:18px;border-radius:4px;flex:none;background:'+r.hex+'"></i><span style="width:150px;flex:none"><b>'+esc(r.name)+'</b><br><small class="muted">'+esc(r.use||'')+(c?' · '+c+' jack'+(c===1?'':'s'):'')+'</small></span><input data-cr="'+esc(r.hex)+'" value="'+esc(r.room)+'" placeholder="Room for all of these (optional)" style="flex:1;min-width:0" maxlength="40"></div>'+(byHex[r.hex]?'<div class="muted" style="font-size:12px;margin:-2px 0 6px 26px">'+byHex[r.hex]+' already ha'+(byHex[r.hex]===1?'s its':'ve their')+' own room — you can move them after saving</div>':'')}).join('')+
-    (ov.length?'<div class="row" style="margin:6px 0"><button type="button" id="crReview">Review jacks that have their own room…</button></div>':'');
+  box.innerHTML='<p class="muted" style="margin-top:0">Give a colour a room and every port of that colour goes there — for example all green camera ports to <b>CAM</b>. A room typed on an individual port still takes priority. Leave blank for normal rooms.</p>'+
+    rows.map(function(r){var c=n(r.hex);return '<div style="display:flex;gap:8px;align-items:center;margin:6px 0"><i style="width:18px;height:18px;border-radius:4px;flex:none;background:'+r.hex+'"></i><span style="width:150px;flex:none"><b>'+esc(r.name)+'</b><br><small class="muted">'+esc(r.use||'')+(c?' · '+c+' port'+(c===1?'':'s'):'')+'</small></span><input data-cr="'+esc(r.hex)+'" value="'+esc(r.room)+'" placeholder="Room for all of these (optional)" style="flex:1;min-width:0" maxlength="40"></div>'+(byHex[r.hex]?'<div class="muted" style="font-size:12px;margin:-2px 0 6px 26px">'+byHex[r.hex]+' already ha'+(byHex[r.hex]===1?'s its':'ve their')+' own room — you can move them after saving</div>':'')}).join('')+
+    (ov.length?'<div class="row" style="margin:6px 0"><button type="button" id="crReview">Review ports that have their own room…</button></div>':'');
   f.parentNode.parentNode.insertBefore(box,f.parentNode);if(el('crReview'))el('crReview').onclick=function(){el('modal').style.display='none';colorRoomReview(colorRoomOverrides())}}
-// jacks (and homeruns) of a colour that has a room, but that carry a different room of their own
+// ports (and homeruns) of a colour that has a room, but that carry a different room of their own
 function colorRoomOverrides(){var out=[];
   S.ports.forEach(function(p){var d=deviceOfPort(p);if(!d||d.kind!=='patch')return;var hex=jcol(p),cr=codeRoom(hex),own=(p.room||'').trim();
     if(cr&&own&&roomNorm(own)!==roomNorm(cr))out.push({p:p,hex:hex,own:own,cr:cr,label:p.label||'',where:portWhere(p)})});
   S.homeruns.forEach(function(h){var q=byId(S.ports,h.port),cr=codeRoom(h.color),own=(h.room||'').trim();if(q&&cr&&own&&roomNorm(own)!==roomNorm(cr))out.push({h:h,p:q,hex:h.color,own:own,cr:cr,label:h.label||'',where:portWhere(q)})});
   return out.sort(function(a,b){return natCmp(a.cr,b.cr)||natCmp(a.own,b.own)||natCmp(a.label,b.label)})}
-function colorRoomReview(list){if(!list.length)return toast('Every jack of those colours already goes to the colour’s room.');
-  modal('Move jacks to their colour’s room',[],function(){var n=0;el('mbox').querySelectorAll('[data-crx]').forEach(function(c){if(!c.checked)return;var x=list[+c.getAttribute('data-crx')];if(x.h)x.h.room='';else x.p.room='';n++});
-    if(!n){toast('Nothing changed — every jack kept its own room.');return}commit();toast('Moved '+n+' jack'+(n===1?'':'s')+' to '+(list.length&&list.every(function(x){return x.cr===list[0].cr})?list[0].cr:'their colour rooms')+'.')});
-  var f=el('mok');f.textContent='Move checked jacks';var box=document.createElement('div');
-  box.innerHTML='<p class="muted" style="margin-top:0">These jacks have a room typed on them, so they stay put unless you tick them here. Ticked jacks lose their own room and follow the colour’s room from now on. Untick any that really are somewhere else (e.g. a camera you set to Main Office).</p>'+
+function colorRoomReview(list){if(!list.length)return toast('Every port of those colours already goes to the colour’s room.');
+  modal('Move ports to their colour’s room',[],function(){var n=0;el('mbox').querySelectorAll('[data-crx]').forEach(function(c){if(!c.checked)return;var x=list[+c.getAttribute('data-crx')];if(x.h)x.h.room='';else x.p.room='';n++});
+    if(!n){toast('Nothing changed — every port kept its own room.');return}commit();toast('Moved '+n+' port'+(n===1?'':'s')+' to '+(list.length&&list.every(function(x){return x.cr===list[0].cr})?list[0].cr:'their colour rooms')+'.')});
+  var f=el('mok');f.textContent='Move checked ports';var box=document.createElement('div');
+  box.innerHTML='<p class="muted" style="margin-top:0">These ports have a room typed on them, so they stay put unless you tick them here. Ticked ports lose their own room and follow the colour’s room from now on. Untick any that really are somewhere else (e.g. a camera you set to Main Office).</p>'+
     '<div class="row" style="margin:4px 0 8px"><button type="button" id="crAll">Tick all</button><button type="button" id="crNone">Untick all</button></div>'+
     '<div style="max-height:52vh;overflow:auto;border:1px solid var(--line);border-radius:6px">'+list.map(function(x,i){return '<label style="display:flex;gap:10px;align-items:center;padding:7px 10px;margin:0;border-bottom:1px solid var(--line);color:var(--text);font-size:14px"><input type="checkbox" data-crx="'+i+'" checked style="width:auto">'+
       '<i style="width:12px;height:12px;border-radius:3px;flex:none;background:'+x.hex+'"></i><span style="flex:1;min-width:0"><b>'+esc(x.label||pn(x.p))+'</b> <span class="muted">· '+esc(pn(x.p))+(x.h?' (homerun)':'')+' · '+esc(x.where.l?closetName(x.where.l):'')+'</span></span><span style="white-space:nowrap">'+esc(x.own)+' → <b>'+esc(x.cr)+'</b></span></label>'}).join('')+'</div>';
@@ -1332,15 +1332,15 @@ function colorRoomReview(list){if(!list.length)return toast('Every jack of those
 function paletteEditor(){
   var rows=CABLE_CODES.map(function(k){return {orig:k[0],hex:k[0],name:k[1],use:k[2],room:codeIsRoom(k),croom:k[4]||''}});
   function draw(){
-    var h='<h3 style="margin-top:0">Edit colors</h3><p class="muted" style="font-size:12px;margin:0 0 8px">Changing a color updates every port, cable and homerun that uses it. Removing one clears it from them. <b>Room</b> ticked means jacks of that colour are labelled with a room (Room lookup groups them by room); unticked means they are devices like cameras or door readers.</p>'+
+    var h='<h3 style="margin-top:0">Edit colors</h3><p class="muted" style="font-size:12px;margin:0 0 8px">Changing a color updates every port, cable and homerun that uses it. Removing one clears it from them. <b>Room</b> ticked means ports of that colour are labelled with a room (Room lookup groups them by room); unticked means they are devices like cameras or door readers.</p>'+
       '<div style="max-height:55vh;overflow:auto">';
     rows.forEach(function(r,i){
       h+='<div style="display:flex;gap:6px;align-items:center;margin:5px 0"><input type="color" data-i="'+i+'" data-k="hex" value="'+r.hex+'" style="width:38px;height:32px;padding:1px;flex:none">'+
         '<input data-i="'+i+'" data-k="name" value="'+esc(r.name)+'" placeholder="Name" style="width:90px">'+
         '<input data-i="'+i+'" data-k="use" value="'+esc(r.use)+'" placeholder="What it is used for" style="flex:1;min-width:0">'+
-        '<label title="Ticked: jacks of this colour are labelled with the room they serve. Unticked: they are devices (cameras, door readers…) and never count as a room." style="display:flex;align-items:center;gap:4px;margin:0;font-size:12px;white-space:nowrap;color:var(--muted)"><input type="checkbox" data-i="'+i+'" data-k="room"'+(r.room?' checked':'')+' style="width:auto">Room</label>'+
+        '<label title="Ticked: ports of this colour are labelled with the room they serve. Unticked: they are devices (cameras, door readers…) and never count as a room." style="display:flex;align-items:center;gap:4px;margin:0;font-size:12px;white-space:nowrap;color:var(--muted)"><input type="checkbox" data-i="'+i+'" data-k="room"'+(r.room?' checked':'')+' style="width:auto">Room</label>'+
         '<button type="button" class="dng" data-del="'+i+'" title="Remove" style="padding:3px 8px">✕</button></div>'});
-    h+='</div><div class="row" style="margin-top:8px"><button id="palAdd">+ Add color</button><button id="palReset">Reset to defaults</button><button id="palRooms" title="Send every jack of a colour to one room, e.g. cameras to CAM">Rooms by colour…</button></div>'+
+    h+='</div><div class="row" style="margin-top:8px"><button id="palAdd">+ Add color</button><button id="palReset">Reset to defaults</button><button id="palRooms" title="Send every port of a colour to one room, e.g. cameras to CAM">Rooms by colour…</button></div>'+
       '<div class="row" style="margin-top:10px"><button class="pri" id="palOk">Save</button><button id="palNo">Cancel</button></div>';
     el('mbox').innerHTML=h;el('modal').style.display='flex';
     el('mbox').querySelectorAll('input[data-i]').forEach(function(inp){inp.oninput=inp.onchange=function(){var k=inp.getAttribute('data-k');rows[+inp.getAttribute('data-i')][k]=k==='room'?inp.checked:inp.value}});
@@ -1670,7 +1670,7 @@ function renderRack(){
       :'<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="3" fill="'+col+'" stroke="#000" stroke-opacity=".5"/>';
     faces+='<g class="dv" data-d="'+d.id+'">'+body+
       '<text x="'+(x+(real?20:10))+'" y="'+(y+22)+'" font-size="15" font-weight="700" fill="#fff">'+esc(nm.length>20?nm.slice(0,19)+'…':nm)+'</text>'+
-      '<text x="'+(x+(real?20:10))+'" y="'+(y+40)+'" font-size="11" fill="#fff" fill-opacity=".85">'+kN(d.kind)+(d.portCount?' · '+portsTxt(d):'')+' · U'+d.startU+(d.heightU>1?'–'+(d.startU+d.heightU-1):'')+(d.ip?' · '+esc(d.ip):'')+'</text>'+(d.kind==='patch'&&d.removable==='yes'&&h>=52?'<text x="'+(x+(real?20:10))+'" y="'+(y+56)+'" font-size="11" fill="#fff" fill-opacity=".85">Removable jacks</text>':'')+
+      '<text x="'+(x+(real?20:10))+'" y="'+(y+40)+'" font-size="11" fill="#fff" fill-opacity=".85">'+kN(d.kind)+(d.portCount?' · '+portsTxt(d):'')+' · U'+d.startU+(d.heightU>1?'–'+(d.startU+d.heightU-1):'')+(d.ip?' · '+esc(d.ip):'')+'</text>'+(d.kind==='patch'&&d.removable==='yes'&&h>=52?'<text x="'+(x+(real?20:10))+'" y="'+(y+56)+'" font-size="11" fill="#fff" fill-opacity=".85">Removable ports</text>':'')+
       '<title>'+esc(nm)+' — click to open</title></g>';
     var ax=x+186,aw=w-196,GS=6,GAP=real?9:0,ngap=Math.max(0,Math.ceil(cols/GS)-1);
     var sfpP=sfpOf(d.id),sfpN=sfpP.length,sfpCols=Math.ceil(sfpN/2),sfpW=sfpN?Math.max(64,sfpCols*31+10):0;aw-=sfpW;
@@ -1826,7 +1826,7 @@ function renderRack(){
     for(i=0;i<spans.length;i++)if(spans[i].c===c){s=spans[i];break}
     var lx=laneX(s.lane),col=cableColor(c),st=Math.min(a.step||4,b.step||4),lw=Math.max(1.4,Math.min(2.6,st-1.3)),cw=Math.min(5,lw+2.2);
     var dp=roundPath([[a.x,edge(a)],[a.x,a.ry],[a.xr,a.ry],[lx,a.ry],[lx,b.ry],[b.xr,b.ry],[b.x,b.ry],[b.x,edge(b)]],9);
-    if(cordStyle()){   // straight from jack to jack, hanging out to the right like a real patch cord (same as the Optimizer)
+    if(cordStyle()){   // straight from port to port, hanging out to the right like a real patch cord (same as the Optimizer)
       var mx=Math.max(a.x,b.x)+Math.min(60,18+Math.abs(a.y-b.y)*0.12);dp='M'+a.x+' '+a.y+' C'+mx+' '+a.y+' '+mx+' '+b.y+' '+b.x+' '+b.y;
       cabg+='<g class="cb cord" data-c="'+c.id+'" data-a="'+c.a+'" data-b="'+c.b+'">'+
         '<path d="'+dp+'" stroke="#000" stroke-opacity=".5" stroke-width="4.5" fill="none"/>'+
@@ -2056,7 +2056,7 @@ function renderDevice(){
   var r=rackOfDevice(d),ports=portsOf(d.id);
   var h='<div class="row"><button id="back">← Back</button><h2 style="margin:0">'+esc(dn(d))+'</h2>'+
     '<span class="muted">'+kN(d.kind)+' · '+esc(r.name)+' · U'+d.startU+(d.heightU>1?'–'+(d.startU+d.heightU-1):'')+(d.portCount?' · '+portsTxt(d):'')+'</span></div>'+
-    '<div class="row"><button id="ed">Edit device</button>'+(d.kind==='patch'?'<span class="muted">Jacks:</span><select id="jk">'+JACK_OPTS.map(function(o){return '<option value="'+o[0]+'"'+((d.removable||'')===o[0]?' selected':'')+'>'+esc(o[1])+'</option>'}).join('')+'</select>':'')+'<button id="bulk" class="pri">Bulk label ports</button><button id="bpaste">Paste labels…</button>'+(d.kind==='patch'?'<button id="bauto">Auto-patch to switch…</button>':'')+(d.kind==='switch'?'<button id="bhr">Bulk homeruns…</button>':'')+(d.kind==='fiber'?'<button id="bfib" class="pri">Connect strands to another closet…</button>':'')+
+    '<div class="row"><button id="ed">Edit device</button>'+(d.kind==='patch'?'<span class="muted">Keystone jacks:</span><select id="jk">'+JACK_OPTS.map(function(o){return '<option value="'+o[0]+'"'+((d.removable||'')===o[0]?' selected':'')+'>'+esc(o[1])+'</option>'}).join('')+'</select>':'')+'<button id="bulk" class="pri">Bulk label ports</button><button id="bpaste">Paste labels…</button>'+(d.kind==='patch'?'<button id="bauto">Auto-patch to switch…</button>':'')+(d.kind==='switch'?'<button id="bhr">Bulk homeruns…</button>':'')+(d.kind==='fiber'?'<button id="bfib" class="pri">Connect strands to another closet…</button>':'')+
     '<button id="plab">Print these port labels</button><button data-qr="dev:'+d.id+'" title="QR code that opens this device">QR code</button><button id="dIss">Report a problem</button><button class="dng" id="del">Delete device</button></div>'+
     '<p class="muted">Click a port to label it, colour-code it or connect a cable. A green outline means a cable is connected.</p>'+issueStrip('dev',d.id)+'<div class="ports">';
   function tileOf(p){var h='';
@@ -2086,7 +2086,7 @@ function renderDevice(){
   el('back').onclick=function(){ui.view=ui.back==='rack'?'rack':ui.back==='issues'?'issues':'map';ui.back=null;render()};
   if(ui.flashPort){var fp=m.querySelector('.port[data-p="'+ui.flashPort+'"]');ui.flashPort=null;if(fp)setTimeout(function(){fp.scrollIntoView({block:'center'})},50)}
   el('ed').onclick=function(){editDevice(d)};
-  if(el('jk'))el('jk').onchange=function(){d.removable=el('jk').value;commit();toast(d.removable==='yes'?'Jacks marked removable.':d.removable==='no'?'Jacks marked fixed.':'Jack type cleared.')};
+  if(el('jk'))el('jk').onchange=function(){d.removable=el('jk').value;commit();toast(d.removable==='yes'?'Keystone jacks marked removable.':d.removable==='no'?'Keystone jacks marked fixed.':'Keystone jack type cleared.')};
   el('bulk').onclick=function(){bulkLabel(d.id)};
   if(el('bpaste'))el('bpaste').onclick=function(){pasteLabels(d.id)};
   if(el('bauto'))el('bauto').onclick=function(){autoPatch(d.id)};
@@ -2243,7 +2243,7 @@ function putScroll(o){if(!o)return;var m=el('main'),sd=el('side'),rw=el('rwrap')
   window.scrollTo(o.wx,o.wy)}
 // ---- Suggestions: looks over the whole map and lists things worth improving
 var SUG_CATS={tidy:'Cable tidy-up',power:'Power',capacity:'Capacity',layout:'Rack layout',docs:'Documentation',cabling:'Cabling',fiber:'Fiber & uplinks'};
-// ---- Cable tidy-up: line patch-panel jacks up with the switch ports they feed
+// ---- Cable tidy-up: line patch-panel ports up with the switch ports they feed
 function hungarian(cost){ // min-cost assignment; rows <= columns; returns column index for every row
   var n=cost.length,m=cost[0].length,INF=1e9,u=[],v=[],p=[],way=[],i,j;
   for(i=0;i<=n;i++)u.push(0);for(j=0;j<=m;j++){v.push(0);p.push(0);way.push(0)}
@@ -2348,21 +2348,21 @@ function groupLine(plan){if(!plan.gb)return '';var a=plan.gb,b=plan.ga;
   return '<div style="margin-top:10px"><b>Colours &amp; rooms on '+esc(dn(plan.pp))+':</b> <span style="color:#dc2626">now '+t(a)+'</span> → <span style="color:#16a34a">after '+t(b)+'</span></div>'}
 function renderPlan(plan){
   var m=el('main'),ty=plan.type,n=plan.moves.length,r=rackOfDevice(ty==='replug'?plan.sw:plan.pp),nj=plan.jmoves.length,ns=plan.smoves.length;
-  var ttl=ty==='jacks'?'Re-seat jacks on '+dn(plan.pp):ty==='regroup'?'Group colours and rooms on '+dn(plan.pp):'Re-plug cables on '+dn(plan.sw);
+  var ttl=ty==='jacks'?'Re-seat ports on '+dn(plan.pp):ty==='regroup'?'Group colours and rooms on '+dn(plan.pp):'Re-plug cables on '+dn(plan.sw);
   var h='<div class="row noprint"><button id="pBack">← Back to suggestions</button><h2 style="margin:0">'+esc(ttl)+'</h2></div>'+
     '<p class="muted">'+esc(rackName2(r))+' · '+plan.links.length+' patch cable'+(plan.links.length===1?'':'s')+' checked · lines that are not straight across are dashed · <span style="color:#d97706;font-weight:700">amber outline</span> = moves</p>'+
     '<div class="card" style="margin-bottom:12px"><div style="display:flex;gap:24px;flex-wrap:wrap">'+
-    (nj?'<div><div style="font-size:26px;font-weight:700">'+nj+'</div><div class="muted">jack move'+(nj===1?'':'s')+'</div></div>':'')+
+    (nj?'<div><div style="font-size:26px;font-weight:700">'+nj+'</div><div class="muted">port move'+(nj===1?'':'s')+'</div></div>':'')+
     (ns?'<div><div style="font-size:26px;font-weight:700">'+ns+'</div><div class="muted">switch cord move'+(ns===1?'':'s')+'</div></div>':'')+
     '<div><div style="font-size:26px;font-weight:700;color:#dc2626">'+plan.before+'</div><div class="muted">misalignment now</div></div>'+
     '<div><div style="font-size:26px;font-weight:700;color:#16a34a">'+plan.after+'</div><div class="muted">after the plan</div></div></div>'+
-    '<p class="muted" style="margin:10px 0 0">'+(ty==='jacks'?'The panel has removable keystone jacks, so each jack can be popped out and seated in a new position. <b>Nothing changes on the switch</b> — same ports, same configuration.':
-      ty==='regroup'?'Jacks are re-seated so each colour sits together and the rooms run in order, then each cord is moved on the switch so it still runs straight across. <b>Switch ports change</b>, so update VLANs/port settings to match. Use “Re-seat jacks” instead if you do not want to touch the switch.':
-      'This panel’s jacks are fixed, so the patch cord has to move on the <b>switch</b> side. That changes which switch port each device uses, so update VLANs/port settings to match. <i>If the jacks are removable, mark the panel that way for a gentler plan.</i>')+
+    '<p class="muted" style="margin:10px 0 0">'+(ty==='jacks'?'The panel has removable keystone jacks, so each keystone jack can be popped out and seated in a new position. <b>Nothing changes on the switch</b> — same ports, same configuration.':
+      ty==='regroup'?'Ports are re-seated so each colour sits together and the rooms run in order, then each cord is moved on the switch so it still runs straight across. <b>Switch ports change</b>, so update VLANs/port settings to match. Use “Re-seat ports” instead if you do not want to touch the switch.':
+      'This panel’s keystone jacks are fixed, so the patch cord has to move on the <b>switch</b> side. That changes which switch port each device uses, so update VLANs/port settings to match. <i>If the keystone jacks are removable, mark the panel that way for a gentler plan.</i>')+
     ' Misalignment counts columns off, +0.5 for the wrong patch row and +1 for the wrong switch row.</p>'+groupLine(plan)+'</div>';
   h+='<div class="card" style="margin-bottom:12px"><b>Steps</b><ol style="margin:8px 0 0;padding-left:22px">';
   plan.jmoves.forEach(function(mv){var l=plan.links.filter(function(x){return x.pj.id===mv.port.id})[0],pc=portCode(mv.port);
-    h+='<li>Jack <b>'+mv.from+'</b>'+(mv.port.label?' “'+esc(mv.port.label)+'”':'')+(pc?' <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:'+mv.port.color+'"></span> '+esc(pc[1]):'')+' → position <b>'+mv.to+'</b>'+(l?' <span class="muted">(cable to '+esc(pn(l.sj))+')</span>':'')+'</li>'});
+    h+='<li>Port <b>'+mv.from+'</b>'+(mv.port.label?' “'+esc(mv.port.label)+'”':'')+(pc?' <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:'+mv.port.color+'"></span> '+esc(pc[1]):'')+' → position <b>'+mv.to+'</b>'+(l?' <span class="muted">(cable to '+esc(pn(l.sj))+')</span>':'')+'</li>'});
   plan.smoves.forEach(function(mv){h+='<li>'+esc(pn(mv.link.pj))+(mv.link.pj.label?' “'+esc(mv.link.pj.label)+'”':'')+': unplug from switch port <b>'+mv.from+'</b>, plug into port <b>'+mv.to+'</b></li>'});
   h+='</ol></div>';
   plan.groups.forEach(function(g){
@@ -2379,8 +2379,8 @@ var RACK_STANDARD=[
   'Every switch has a 1U patch panel directly above it and one directly below it, and each panel feeds only the switch it sits next to.',
   'Cords go one-to-one in order: patch port 1 on the panel above → switch port 1, port 2 → port 2, and so on. The panel below continues where the top one ends (with 24-port panels: panel port 1 → switch port 25, port 2 → port 26…).',
   'On removable panels, all of one colour sits together across the whole rack — all the blues, then all the reds, then all the greens — in colour-list order, with rooms in order inside each colour. Panels fill from the top, so the top panel is full first.',
-  'Every homerun gets its own jack on a patch panel (labelled and coloured like the homerun) and a cord to the switch, so no cable goes straight to a switch port.',
-  'Fixed panels keep their jacks; the switch cord moves to the matching port instead.',
+  'Every homerun gets its own port on a patch panel (labelled and coloured like the homerun) and a cord to the switch, so no cable goes straight to a switch port.',
+  'Fixed panels keep their ports; the switch cord moves to the matching port instead.',
   'Switches and other gear keep their order — they only slide down a little when a patch panel needs the room.'];
 function optLayout(r){var hrs=[];S.homeruns.forEach(function(h){var q=byId(S.ports,h.port),d=q&&deviceOfPort(q);if(d&&d.rackId===r.id&&d.kind==='switch')hrs.push({h:h,q:q,sw:d})});
   return {devs:S.devices.filter(function(d){return d.rackId===r.id}),links:tidyLinks().filter(function(l){return l.pp.rackId===r.id}),hrs:hrs}}
@@ -2428,7 +2428,7 @@ function optimise(r){
   function D(id){return byDev[id]}
   function vd(d){return {portCount:d.portCount,startU:U(d),numbering:d.numbering}}
   function colorOf(l){return jcol(l.pj)||jcol(l.sj)||'#9ca3af'}
-  // each homerun becomes a new jack (placed below) plus a cord from it to the same switch
+  // each homerun becomes a new port (placed below) plus a cord from it to the same switch
   lay.hrs.forEach(function(x){var hj={id:'hj:'+x.h.id,devId:'',num:0,label:x.h.label||'',color:x.h.color||'',syn:true,hr:x.h,q:x.q};hjs.push(hj);
     links.push({c:{id:'hrc:'+x.h.id},pp:{id:'hr'},sw:x.sw,pj:hj,sj:x.q,hr:true})});
   var linkOf={},cordCol={};links.forEach(function(l){linkOf[l.pj.id]=l;cordCol[l.c.id]=colorOf(l)});
@@ -2452,7 +2452,7 @@ function optimise(r){
     cols.forEach(function(c,i){if(usedCol[i]||c.dir==='any')return;if(!links.some(function(l){return l.sw.id===c.sw.id}))return;
       nn++;var v={id:'vnew'+nn,virtual:true,kind:'patch',name:'New patch panel '+nn,label:'',portCount:per,heightU:1,startU:c.sw.startU+(c.dir==='above'?c.sw.heightU:-1),removable:'yes',rackId:r.id,dirHint:c.dir,swId:c.sw.id};
       devs.push(v);byDev[v.id]=v;pps.push(v);att[v.id]=c.sw.id;attDir[v.id]=c.dir;adds.push({d:v,sw:c.sw,dir:c.dir})})}
-  // not enough jacks for everything in use (homeruns included): add panels under the last one
+  // not enough ports for everything in use (homeruns included): add panels under the last one
   var cap=0,need=hjs.length;pps.forEach(function(pp){if(pp.removable==='yes'){cap+=pp.portCount;portsOf(pp.id).forEach(function(p){if(jackInUse(p))need++})}});
   var xn=0;while(need>cap&&pps.length&&xn<20){xn++;nn=(typeof nn==='number'?nn:0)+1;var vx={id:'vnew'+nn,virtual:true,kind:'patch',name:'New patch panel '+nn,label:'',portCount:per,heightU:1,startU:1,removable:'yes',rackId:r.id};
     devs.push(vx);byDev[vx.id]=vx;pps.push(vx);att[vx.id]=null;attDir[vx.id]=null;adds.push({d:vx,sw:null,dir:'extra'});cap+=per}
@@ -2579,7 +2579,7 @@ function optDetail(oc,sw,state,z){
   if(!B)txt+='<text x="'+LX+'" y="'+(H-4)+'" font-size="11" fill="#b45309">No patch panel directly below this switch</text>';
   return svg+lines+sq+txt+'</svg>'}
 function optSection(rs){
-  var z=optZoom(),h='<div id="optSec" style="margin-top:22px"><div class="row"><h2 style="margin:0 0 4px">Optimised jack placement</h2><span style="flex:1"></span>'+
+  var z=optZoom(),h='<div id="optSec" style="margin-top:22px"><div class="row"><h2 style="margin:0 0 4px">Optimised port placement</h2><span style="flex:1"></span>'+
     '<span class="muted">Zoom</span><button id="zOut">−</button><button id="zIn">+</button></div>'+
     '<p class="muted" style="margin:0 0 10px">The same rack with patch panels, keystone jacks and switch cords placed to our standard. This is a suggestion only — nothing changes in your map. <span style="color:#d97706;font-weight:700">Amber</span> = something that moves, <span style="color:#16a34a;font-weight:700">green dashed</span> = a patch panel to add.</p>'+
     '<div class="card" style="margin-bottom:12px"><b>The standard</b><ol style="margin:6px 0 0;padding-left:20px">'+RACK_STANDARD.map(function(t){return '<li>'+esc(t)+'</li>'}).join('')+'</ol></div>';
@@ -2592,19 +2592,19 @@ function optSection(rs){
       b=oc.devs.filter(function(d){return !oc.removals.some(function(x){return x===d})}).map(function(d){return {d:d,u:oc.U(d),occ:oc.opt[d.id],mv:oc.mv[d.id],moved:!d.virtual&&oc.U(d)!==d.startU,added:!!d.virtual}});
     function t(x){return x.runs+' colour block'+(x.runs===1?'':'s')+' (best '+x.ideal+')'+(x.inv?', '+x.inv+' room'+(x.inv===1?'':'s')+' out of order':', rooms in order')}
     function dnId(id){var d=oc.byDev[id];return d?dn(d):'?'}
-    h+='<span class="muted">'+(tot?[na?na+' panel'+(na===1?'':'s')+' to add':'',nr?nr+' panel'+(nr===1?'':'s')+' to remove':'',nd?nd+' panel'+(nd===1?'':'s')+' to move':'',nh?nh+' homerun'+(nh===1?'':'s')+' onto panels':'',nj?nj+' jack'+(nj===1?'':'s'):'',ns?ns+' switch cord'+(ns===1?'':'s'):''].filter(Boolean).join(', '):'Already follows the standard')+'</span>'+(tot?'<button data-wo="'+r.id+'" class="pri" style="margin-left:auto" title="A checklist of these moves you can print, tick off, then apply to the map">'+(S.workorders&&S.workorders[r.id]?'Open work order':'Create work order')+'</button>':'')+'</div>'+
+    h+='<span class="muted">'+(tot?[na?na+' panel'+(na===1?'':'s')+' to add':'',nr?nr+' panel'+(nr===1?'':'s')+' to remove':'',nd?nd+' panel'+(nd===1?'':'s')+' to move':'',nh?nh+' homerun'+(nh===1?'':'s')+' onto panels':'',nj?nj+' port'+(nj===1?'':'s'):'',ns?ns+' switch cord'+(ns===1?'':'s'):''].filter(Boolean).join(', '):'Already follows the standard')+'</span>'+(tot?'<button data-wo="'+r.id+'" class="pri" style="margin-left:auto" title="A checklist of these moves you can print, tick off, then apply to the map">'+(S.workorders&&S.workorders[r.id]?'Open work order':'Create work order')+'</button>':'')+'</div>'+
       (oc.gb.runs?'<div style="margin-top:6px"><b>Colours &amp; rooms:</b> <span style="color:#dc2626">now '+t(oc.gb)+'</span> → <span style="color:#16a34a">after '+t(oc.ga)+'</span></div>':'')+
       (oc.lacking.length?'<div class="muted" style="margin-top:4px">'+oc.lacking.map(function(x){return esc(dn(x.sw))+' has no panel '+(!x.up&&!x.down?'above or below':!x.up?'above':'below')}).join(', ')+'.</div>':'')+
       '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;align-items:flex-start;overflow-x:auto">'+optElev(r,a,'Now','',z)+optElev(r,b,'Optimised','standard',z)+
       '<div style="flex:1;min-width:280px"><b>Moves</b>'+(tot?'<ol style="margin:6px 0 0;padding-left:30px;max-height:640px;overflow:auto">'+
-        oc.adds.map(function(m){return '<li>Add a <b>new patch panel</b> at <b>U'+m.at+'</b> '+(m.sw?(m.dir==='above'?'above ':'below ')+esc(dn(m.sw)):'under the last patch panel <span class="muted">(more jacks needed)</span>')+' <span class="muted">(from your spares)</span></li>'}).join('')+
+        oc.adds.map(function(m){return '<li>Add a <b>new patch panel</b> at <b>U'+m.at+'</b> '+(m.sw?(m.dir==='above'?'above ':'below ')+esc(dn(m.sw)):'under the last patch panel <span class="muted">(more ports needed)</span>')+' <span class="muted">(from your spares)</span></li>'}).join('')+
         oc.dmoves.map(function(m){return '<li>Move <b>'+esc(dn(m.d))+'</b> from U'+m.from+' to <b>U'+m.to+'</b> <span class="muted">('+(m.d.kind==='patch'?'so each switch has a panel above and below':'to make room for a patch panel')+')</span></li>'}).join('')+
-        oc.removals.map(function(d){return '<li>You can <b>take out '+esc(dn(d))+'</b> <span class="muted">(U'+d.startU+') — nothing needs it once the jacks are regrouped</span></li>'}).join('')+
+        oc.removals.map(function(d){return '<li>You can <b>take out '+esc(dn(d))+'</b> <span class="muted">(U'+d.startU+') — nothing needs it once the keystone jacks are regrouped</span></li>'}).join('')+
         oc.jmoves.filter(function(m){return jackInUse(m.port)}).map(function(m){var pc=portCode(m.port);
-          return '<li>'+esc(dnId(m.fromDev))+': jack <b>'+m.from+'</b>'+(m.port.label?' “'+esc(m.port.label)+'”':'')+(pc?' ('+esc(pc[1])+')':'')+' → '+(m.fromDev===m.toDev?'':esc(dnId(m.toDev))+' ')+'position <b>'+m.to+'</b></li>'}).join('')+
-        oc.hmoves.map(function(m){return '<li>Homerun <b>'+esc(m.h.label||'(no label)')+'</b> on '+esc(dn(m.swFrom))+' port '+m.from+': put it on <b>'+esc(dn(m.panel))+' jack '+m.jack+'</b> and run a cord to <b>'+esc(dn(m.swTo))+' port '+m.to+'</b></li>'}).join('')+
+          return '<li>'+esc(dnId(m.fromDev))+': port <b>'+m.from+'</b>'+(m.port.label?' “'+esc(m.port.label)+'”':'')+(pc?' ('+esc(pc[1])+')':'')+' → '+(m.fromDev===m.toDev?'':esc(dnId(m.toDev))+' ')+'position <b>'+m.to+'</b></li>'}).join('')+
+        oc.hmoves.map(function(m){return '<li>Homerun <b>'+esc(m.h.label||'(no label)')+'</b> on '+esc(dn(m.swFrom))+' port '+m.from+': put it on <b>'+esc(dn(m.panel))+' port '+m.jack+'</b> and run a cord to <b>'+esc(dn(m.swTo))+' port '+m.to+'</b></li>'}).join('')+
         oc.smoves.map(function(m){var cross=m.fromSw!==m.toSw;return '<li>Cord from '+esc(pn(m.link.pj))+': '+(cross?esc(dn(m.fromSw))+' port '+m.from+' → <b>'+esc(dn(m.toSw))+' port '+m.to+'</b>':esc(dn(m.toSw))+' port '+m.from+' → port <b>'+m.to+'</b>')+'</li>'}).join('')+'</ol>':'<p class="muted">No moves needed.</p>')+
-      '<p class="muted" style="margin-top:10px">This is a suggestion only — nothing here changes your map. Make the changes yourself in Map and Rack view, in this order: add/move/remove panels, then jacks, then cords. Moving a cord to another switch port changes that device’s switch and port, so update port settings to match.</p></div></div>';
+      '<p class="muted" style="margin-top:10px">This is a suggestion only — nothing here changes your map. Make the changes yourself in Map and Rack view, in this order: add/move/remove panels, then ports, then cords. Moving a cord to another switch port changes that device’s switch and port, so update port settings to match.</p></div></div>';
     h+='<div style="margin-top:14px"><b>Close-up by switch</b> <span class="muted">— port numbers, labels and cords; the optimised wiring first</span></div>';
     oc.devs.filter(function(d){return d.kind==='switch'&&oc.links.some(function(l){return l.sw.id===d.id})||oc.smoves.some(function(m){return m.toSw===d})&&d.kind==='switch'}).sort(function(x,y){return oc.U(y)-oc.U(x)}).forEach(function(sw){
       h+='<div style="margin-top:10px;overflow-x:auto"><div class="muted" style="margin-bottom:4px">'+esc(dn(sw))+' — <b>after</b> (build this)</div>'+optDetail(oc,sw,'after',z)+(function(){var b=oc.blocked[sw.id],ks=Object.keys(b);return ks.length?'<div class="muted" style="margin-top:4px"><b>Grey ports are used by something else and stay put:</b> '+ks.map(function(k){return k+' ('+esc(b[k])+')'}).join(', ')+'. Cords are moved to the nearest free port instead.</div>':''})()+
@@ -2728,27 +2728,27 @@ function sugAnalyze(){
       if(n===1)add('med','fiber','Single link between '+locFull(a)+' and '+locFull(b),'Only one cable joins these closets — if it fails, the far side goes dark. Run a second path (ideally on a different route), or at least spare strands.',k+'|single',null)});
     // star vs chain: closet that is the only path (articulation) — simple: degree>=2 where removing splits; skip heavy
   }
-  // cable tidy-up: line jacks / switch ports up, keep colours and rooms together
+  // cable tidy-up: line ports / switch ports up, keep colours and rooms together
   [].forEach(function(pl){var ty=pl.type,k=pl.moves.length,gain=pl.before-pl.after,dev=ty==='replug'?pl.sw:pl.pp,title,detail,sev;
     var gdiff=pl.gb?(pl.gb.breaks+pl.gb.inv)-(pl.ga.breaks+pl.ga.inv):0;
     if(ty==='jacks'){sev=(gain>=6||gdiff>=3)?'med':'low';
-      title='Re-seat '+pl.jmoves.length+' jack'+(pl.jmoves.length===1?'':'s')+' on '+dn(pl.pp)+' to line up with the switch';
-      detail='Removable jacks: no switch changes. Misalignment '+pl.before+' → '+pl.after+(gdiff>0?'; colours/rooms also end up '+(pl.ga.breaks+pl.ga.inv===0?'fully grouped':'better grouped'):'')+'. Open the plan for a before/after picture.'}
+      title='Re-seat '+pl.jmoves.length+' port'+(pl.jmoves.length===1?'':'s')+' on '+dn(pl.pp)+' to line up with the switch';
+      detail='Removable ports: no switch changes. Misalignment '+pl.before+' → '+pl.after+(gdiff>0?'; colours/rooms also end up '+(pl.ga.breaks+pl.ga.inv===0?'fully grouped':'better grouped'):'')+'. Open the plan for a before/after picture.'}
     else if(ty==='regroup'){sev=(pl.gb.breaks>=2||pl.gb.inv>=3)?'med':'low';
       title='Group colours and rooms together on '+dn(pl.pp);
-      detail='Colours are split into '+pl.gb.runs+' blocks (best possible '+pl.gb.ideal+')'+(pl.gb.inv?' and '+pl.gb.inv+' room'+(pl.gb.inv===1?' is':'s are')+' out of order':'')+'. Moves '+pl.jmoves.length+' jack'+(pl.jmoves.length===1?'':'s')+' and '+pl.smoves.length+' switch cord'+(pl.smoves.length===1?'':'s')+' (switch ports change). Biggest job, biggest tidy-up.'}
+      detail='Colours are split into '+pl.gb.runs+' blocks (best possible '+pl.gb.ideal+')'+(pl.gb.inv?' and '+pl.gb.inv+' room'+(pl.gb.inv===1?' is':'s are')+' out of order':'')+'. Moves '+pl.jmoves.length+' port'+(pl.jmoves.length===1?'':'s')+' and '+pl.smoves.length+' switch cord'+(pl.smoves.length===1?'':'s')+' (switch ports change). Biggest job, biggest tidy-up.'}
     else{sev=gain>=12?'med':'low';
       title='Re-plug '+k+' cable'+(k===1?'':'s')+' on '+dn(pl.sw)+' so they run straight across';
-      detail='The panel jacks are fixed, so the cord moves on the switch — port numbers change, so settings must follow. Misalignment '+pl.before+' → '+pl.after+'. Marking the panel’s jacks removable gives a gentler plan.'}
+      detail='The panel’s keystone jacks are fixed, so the cord moves on the switch — port numbers change, so settings must follow. Misalignment '+pl.before+' → '+pl.after+'. Marking the panel’s keystone jacks removable gives a gentler plan.'}
     add(sev,'tidy',title,detail,pl.key,function(){ui.plan=pl.key;ui.view='sug';render()});out[out.length-1].plan=pl.key});
   S.racks.forEach(function(r){var lay=optLayout(r);if(!lay.links.length&&!lay.hrs.length)return;var oc=optimise(r),nd=oc.dmoves.length+oc.hmoves.length+oc.adds.length,nj=oc.jmoves.filter(function(m){return jackInUse(m.port)}).length,ns=oc.smoves.length;if(!(nd+nj+ns))return;
-    var parts=[nd?nd+' patch panel'+(nd===1?'':'s'):'',nj?nj+' jack'+(nj===1?'':'s'):'',ns?ns+' switch cord'+(ns===1?'':'s'):''].filter(Boolean).join(', ');
-    add((oc.gb.breaks>=2||nd)?'med':'low','tidy','Optimise jack placement in '+r.name,'Same-colour jacks together'+(nd?', a patch panel above and below each switch':'')+', cords one-to-one (panel port 1 → switch port 1…): '+parts+' to move. Open the optimised picture for the plan.',r.id+'|optjacks',function(){var t=el('optSec');if(t)t.scrollIntoView()})});
-  // colours scattered on a panel whose jacks cannot be moved
+    var parts=[nd?nd+' patch panel'+(nd===1?'':'s'):'',nj?nj+' port'+(nj===1?'':'s'):'',ns?ns+' switch cord'+(ns===1?'':'s'):''].filter(Boolean).join(', ');
+    add((oc.gb.breaks>=2||nd)?'med':'low','tidy','Optimise port placement in '+r.name,'Same-colour ports together'+(nd?', a patch panel above and below each switch':'')+', cords one-to-one (panel port 1 → switch port 1…): '+parts+' to move. Open the optimised picture for the plan.',r.id+'|optjacks',function(){var t=el('optSec');if(t)t.scrollIntoView()})});
+  // colours scattered on a panel whose keystone jacks cannot be moved
   S.devices.filter(function(d){return d.kind==='patch'&&d.removable!=='yes'}).forEach(function(d){var gs=groupStats(portsOf(d.id),function(p){return p.num});
-    if(gs.n>=4&&(gs.breaks>=2||gs.inv>=3))add('info','tidy',dn(d)+' has colours and rooms spread out','Colours are in '+gs.runs+' blocks (best possible '+gs.ideal+')'+(gs.inv?' and '+gs.inv+' room'+(gs.inv===1?' is':'s are')+' out of order':'')+'. If the jacks are removable, set that on the panel and the optimised jack placement below will regroup them; otherwise this is as-built.',d.id+'|scattered',goDev(d))});
+    if(gs.n>=4&&(gs.breaks>=2||gs.inv>=3))add('info','tidy',dn(d)+' has colours and rooms spread out','Colours are in '+gs.runs+' blocks (best possible '+gs.ideal+')'+(gs.inv?' and '+gs.inv+' room'+(gs.inv===1?' is':'s are')+' out of order':'')+'. If the keystone jacks are removable, set that on the panel and the optimised port placement below will regroup them; otherwise this is as-built.',d.id+'|scattered',goDev(d))});
   var seenUnset={};tidyLinks().forEach(function(l){if(!l.pp.removable&&!seenUnset[l.pp.id]){seenUnset[l.pp.id]=1;
-    add('info','tidy','Are the jacks on '+dn(l.pp)+' removable?','Mark the panel as removable or fixed (Edit device). Removable jacks can be re-seated to tidy cabling without touching the switch; until set, it is treated as fixed.',l.pp.id+'|removable-unset',goDev(l.pp))}});
+    add('info','tidy','Are the ports on '+dn(l.pp)+' removable?','Mark the panel as removable or fixed (Edit device). Removable keystone jacks can be re-seated to tidy cabling without touching the switch; until set, it is treated as fixed.',l.pp.id+'|removable-unset',goDev(l.pp))}});
   // ordering
   var rank={high:0,med:1,low:2,info:3};
   out.sort(function(a,b){return rank[a.sev]-rank[b.sev]||a.cat.localeCompare(b.cat)});
@@ -2768,7 +2768,7 @@ function renderSuggest(){
   var cnt={high:0,med:0,low:0,info:0};act.forEach(function(f){cnt[f.sev]++});
   var score=Math.max(0,Math.min(100,100-cnt.high*12-cnt.med*5-cnt.low*2));
   var h='<div class="row noprint"><h2 style="margin:0">Suggested updates'+(locObj?' <span class="muted" style="font-weight:400">— '+esc(locFull(locObj))+'</span>':'')+'</h2><button id="sgCsv">Export CSV</button><button id="sgPrt">Print</button>'+
-    '<a href="#optSec" id="sgJump" style="margin-left:6px">See optimised jacks ↓</a>'+(ui.loc?'<label style="margin-left:auto"><input type="checkbox" id="sgAllC"'+(ui.sugAll?' checked':'')+'> All closets</label>':'')+'</div>'+
+    '<a href="#optSec" id="sgJump" style="margin-left:6px">See optimised ports ↓</a>'+(ui.loc?'<label style="margin-left:auto"><input type="checkbox" id="sgAllC"'+(ui.sugAll?' checked':'')+'> All closets</label>':'')+'</div>'+
     '<p class="muted" style="margin:4px 0 12px">Checked from the data you have entered. The more you document, the sharper the advice gets.</p>';
   h+='<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px">'+
     '<div class="card" style="min-width:120px;text-align:center"><div style="font-size:34px;font-weight:700;color:'+(score>=80?'#16a34a':score>=55?'#d97706':'#dc2626')+'">'+score+'</div><div class="muted">Closet health</div></div>';
@@ -3337,7 +3337,7 @@ function autoPatch(did){
   function startFor(sw){var side=adj(sw)||(d.startU>sw.startU?'above':'below');return side==='below'&&sw.portCount>d.portCount?sw.portCount-d.portCount+1:1}
   modal('Auto-patch '+dn(d),[{label:'Switch',options:sws.map(function(sw){return [sw.id,dn(sw)+(adj(sw)?' (directly '+(adj(sw)==='above'?'below':'above')+' this panel)':' · U'+sw.startU)]}),value:sws[0].id},
     {label:'Panel port 1 goes to switch port',type:'number',value:startFor(sws[0])},
-    {label:'Which jacks',options:[['used','Only jacks with a label or colour'],['all','Every jack']],value:'used'}],
+    {label:'Which ports',options:[['used','Only ports with a label or colour'],['all','Every port']],value:'used'}],
     function(v){var sw=byId(S.devices,v[0]),st=Math.max(1,parseInt(v[1],10)||1),all=v[2]==='all',made=0,skip=[];
       portsOf(d.id).slice().sort(function(a,b){return a.num-b.num}).forEach(function(p){
         if(!all&&!((p.label||'').trim()||p.color))return;
@@ -3347,9 +3347,9 @@ function autoPatch(did){
         if(!portFree(q)){skip.push(p.num+' (switch port '+n+' in use)');return}
         S.cables.push({id:uid(),a:p.id,b:q.id,label:''});made++});
       commit();toast('Made '+made+' cable'+(made===1?'':'s')+(skip.length?'; skipped '+skip.length:'')+'. Ctrl+Z undoes it.');
-      if(skip.length)setTimeout(function(){alert('Skipped jacks:\n'+skip.join('\n'))},50)},
+      if(skip.length)setTimeout(function(){alert('Skipped ports:\n'+skip.join('\n'))},50)},
     function(){var box=el('mbox'),n=document.createElement('p');n.className='muted';n.style.fontSize='12px';
-      n.textContent='Jack n goes to switch port (start + n − 1). Jacks that already have a cable are left alone, and so are switch ports in use.';
+      n.textContent='Port n goes to switch port (start + n − 1). Ports that already have a cable are left alone, and so are switch ports in use.';
       box.insertBefore(n,el('mok').parentNode);
       el('f0').onchange=function(){el('f1').value=startFor(byId(S.devices,el('f0').value))}})}
 
@@ -3413,7 +3413,7 @@ function tracePath(pid){
   var chain=[];back.slice().reverse().forEach(function(h,i,arr){chain.push({p:h.p,c:i===0?null:null})});
   var nodes=back.slice().reverse().map(function(h){return h.p}).concat([p0]).concat(front.map(function(h){return h.p}));
   var links=back.slice().reverse().map(function(h){return h.c}).concat(front.map(function(h){return h.c}));
-  // room ends: a patch panel jack's back is the room; a switch port may have a homerun to a room
+  // room ends: a patch panel port's back is the room; a switch port may have a homerun to a room
   function roomEnd(p){var d=deviceOfPort(p);if(!d)return null;
     if(d.kind==='patch'&&(p.label||'').trim()){var jc=jcol(p);return {label:p.label.trim(),how:'jack',color:jc,cam:isCamColor(jc)}}
     var h=homerunOf(p.id);if(h)return {label:(h.label||'(no label)'),how:'homerun',color:h.color||'',cam:isCamColor(h.color)};return null}
@@ -3424,7 +3424,7 @@ function tracePath(pid){
   return {nodes:nodes,links:links,room:startRoom,end:endRoom}}
 function traceHTML(t,compact){if(!t)return '';
   var h='<div class="trace'+(compact?' compact':'')+'">';
-  function room(r){return '<div class="tn room"><i style="background:'+(r.color||'var(--faint)')+'"></i><div><b>'+esc(r.label)+'</b><small>'+(r.cam?esc(thingName(r.color).toLowerCase()):'room')+(r.how==='homerun'?' (homerun cable)':' — wall jack')+'</small></div></div>'+
+  function room(r){return '<div class="tn room"><i style="background:'+(r.color||'var(--faint)')+'"></i><div><b>'+esc(r.label)+'</b><small>'+(r.cam?esc(thingName(r.color).toLowerCase()):'room')+(r.how==='homerun'?' (homerun cable)':' — wall port')+'</small></div></div>'+
     '<div class="tl '+(r.how==='homerun'?'hr':'run')+'"><span>'+(r.how==='homerun'?'homerun':'horizontal run')+'</span></div>'}
   if(t.room)h+=room(t.room);
   t.nodes.forEach(function(p,i){var w=portWhere(p),c=t.links[i];
@@ -3459,7 +3459,7 @@ function roomBase(t){t=String(t).trim();
 function roomKey(t){return roomBase(t).toLowerCase().replace(/^\s*(room|rm\.?)\s*/,'').replace(/\s+/g,' ').trim()}
 // the building a closet is in: its site; a closet with no site counts as its own building
 function buildingOf(p){var w=portWhere(p);if(!w.l)return {id:'?',name:'?'};var st=siteOf(w.l);return st?{id:'s:'+st.id,name:st.name}:{id:'l:'+w.l.id,name:w.l.label||w.l.name}}
-// ---- rooms are set by the user on each jack (p.room / homerun.room); the label is the jack's own name
+// ---- rooms are set by the user on each port (p.room / homerun.room); the label is the port's own name
 function hasDigit(t){return /\d/.test(t||'')}
 function guessRoom(label,color){var k=codeOfHex(color);if(k&&!codeIsRoom(k))return '';label=String(label||'').trim();return hasDigit(label)?roomBase(label):''}
 function roomNorm(t){return String(t||'').toLowerCase().replace(/^\s*(room|rm\.?)\s*/,'').replace(/\s+/g,' ').trim()}
@@ -3475,8 +3475,8 @@ function roomFieldSetup(p){var f=el('f2');if(!f)return;var auto=!(p.room||'').tr
   var hint=document.createElement('div');hint.className='muted';hint.style.cssText='font-size:12px;margin-top:3px';f.parentNode.insertBefore(hint,f.nextSibling);
   function upd(){var lab=el('f0').value,col=el('f1').value,k=codeOfHex(col),isRoom=!k||codeIsRoom(k);
     var cr=codeRoom(col);if(auto){f.value=cr?'':guessRoom(lab,col)}
-    f.placeholder=cr?cr+' — every '+(k?k[1]:'')+' jack goes here (type to override)':isRoom?'e.g. 157 — every labelled jack should have one':'optional — where this '+thingName(col).toLowerCase()+' is';
-    hint.innerHTML=!f.value.trim()&&cr?'Goes to room <b>'+esc(cr)+'</b> with every other '+esc(k?k[1].toLowerCase():'')+' jack (set in Rooms by colour).':f.value.trim()?'Jack shows as <b>'+esc(dropName(lab,f.value)||lab)+'</b> in room <b>'+esc(f.value.trim())+'</b>'+(auto&&f.value?' <span>(filled in from the label — change it if it is wrong)</span>':''):(isRoom&&lab.trim()?'<span style="color:var(--warn)">No room yet — Room lookup will list this jack under “needs a room”.</span>':'')}
+    f.placeholder=cr?cr+' — every '+(k?k[1]:'')+' port goes here (type to override)':isRoom?'e.g. 157 — every labelled port should have one':'optional — where this '+thingName(col).toLowerCase()+' is';
+    hint.innerHTML=!f.value.trim()&&cr?'Goes to room <b>'+esc(cr)+'</b> with every other '+esc(k?k[1].toLowerCase():'')+' port (set in Rooms by colour).':f.value.trim()?'Port shows as <b>'+esc(dropName(lab,f.value)||lab)+'</b> in room <b>'+esc(f.value.trim())+'</b>'+(auto&&f.value?' <span>(filled in from the label — change it if it is wrong)</span>':''):(isRoom&&lab.trim()?'<span style="color:var(--warn)">No room yet — Room lookup will list this port under “needs a room”.</span>':'')}
   f.oninput=function(){auto=false;upd()};el('f0').addEventListener('input',upd);el('f1').addEventListener('change',upd);
   el('mbox').querySelectorAll('.swb').forEach(function(b){b.addEventListener('click',function(){setTimeout(upd,0)})});upd()}
 
@@ -3530,12 +3530,12 @@ function renderBuilding(){var m=el('main'),bl=buildingList();
   var h=roomsHead()+'<div class="row" style="align-items:center"><label style="margin:0">Building <select id="bldSel">'+bl.map(function(b){return '<option value="'+esc(b.id)+'"'+(b.id===ui.bld?' selected':'')+'>'+esc(b.name)+'</option>'}).join('')+'</select></label>'+
     '<span style="flex:1"></span><button id="colRooms2">Rooms by colour…</button><button id="bldPrint" class="pri">Print / save as PDF</button><button id="bldCsv">Download rooms (CSV)</button><button id="bldPorts">Download port list (CSV)</button></div>'+
     '<div class="tiles"><div class="tile"><b>'+R.tot.rooms+'</b><span>rooms</span></div><div class="tile"><b>'+R.tot.ports+'</b><span>ports to rooms</span></div><div class="tile"><b>'+R.tot.live+'</b><span>patched to a switch ('+pct+'%)</span></div><div class="tile"><b>'+R.closets.length+'</b><span>closet'+(R.closets.length===1?'':'s')+'</span></div>'+(R.tot.other?'<div class="tile"><b>'+R.tot.other+'</b><span>cameras, readers &amp; other</span></div>':'')+'</div>'+
-    (R.missing?'<div class="card warnbar"><span class="led warn"></span><b>'+R.missing+' labelled jack'+(R.missing===1?' has':'s have')+' no room yet</b> <span class="muted">and '+(R.missing===1?'isn’t':'aren’t')+' counted below.</span> <button id="fillRooms2" style="margin-left:8px">Set rooms…</button></div>':'')+
+    (R.missing?'<div class="card warnbar"><span class="led warn"></span><b>'+R.missing+' labelled port'+(R.missing===1?' has':'s have')+' no room yet</b> <span class="muted">and '+(R.missing===1?'isn’t':'aren’t')+' counted below.</span> <button id="fillRooms2" style="margin-left:8px">Set rooms…</button></div>':'')+
     '<h3>Closets</h3><div class="tblwrap"><table class="rpt"><tr><th>Closet</th><th class="n">Rooms served</th><th class="n">Ports to rooms</th><th class="n">Patched to switch</th><th class="n">Not patched</th><th class="n">Other devices</th></tr>'+
     R.closets.map(function(c){return '<tr><td><a href="#" data-goloc="'+c.l.id+'">'+esc(closetName(c.l))+'</a></td><td class="n">'+c.nrooms+'</td><td class="n">'+c.ports+'</td><td class="n">'+c.live+'</td><td class="n">'+(c.ports-c.live)+'</td><td class="n">'+(c.other||'')+'</td></tr>'}).join('')+
     '<tr class="tot"><td>Total</td><td class="n">'+R.tot.rooms+'</td><td class="n">'+R.tot.ports+'</td><td class="n">'+R.tot.live+'</td><td class="n">'+(R.tot.ports-R.tot.live)+'</td><td class="n">'+(R.tot.other||'')+'</td></tr></table></div>'+
     '<h3>Rooms</h3>'+(R.rooms.length?'<div class="tblwrap"><table class="rpt"><tr><th>Room</th><th class="n">Ports</th><th>Goes to closet</th><th class="n">Patched to switch</th><th>Other devices</th></tr>'+
-    R.rooms.map(function(r){return '<tr class="rrow" data-room="'+esc(r.g.key)+'"><td><b>'+esc(r.room)+'</b></td><td class="n">'+r.ports+'</td><td>'+esc(closetsTxt(r,true))+'</td><td class="n">'+r.live+(r.ports&&r.live<r.ports?' <span class="muted">/ '+r.ports+'</span>':'')+'</td><td class="muted">'+esc(otherTxt(r.other))+'</td></tr>'}).join('')+'</table></div>':'<div class="card muted">No rooms in this building yet. Give jacks a room (open a jack → “Room this jack serves”).</div>');
+    R.rooms.map(function(r){return '<tr class="rrow" data-room="'+esc(r.g.key)+'"><td><b>'+esc(r.room)+'</b></td><td class="n">'+r.ports+'</td><td>'+esc(closetsTxt(r,true))+'</td><td class="n">'+r.live+(r.ports&&r.live<r.ports?' <span class="muted">/ '+r.ports+'</span>':'')+'</td><td class="muted">'+esc(otherTxt(r.other))+'</td></tr>'}).join('')+'</table></div>':'<div class="card muted">No rooms in this building yet. Give ports a room (open a port → “Room this port serves”).</div>');
   m.innerHTML=h;bindRoomsHead();
   el('bldSel').onchange=function(){ui.bld=el('bldSel').value;render()};el('colRooms2').onclick=colorRoomsBox;
   el('bldCsv').onclick=function(){bldCsv(R,false)};el('bldPorts').onclick=function(){bldCsv(R,true)};el('bldPrint').onclick=function(){bldPrint(R)};
@@ -3545,7 +3545,7 @@ function renderBuilding(){var m=el('main'),bl=buildingList();
 function csvCell(v){v=String(v==null?'':v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
 function fileSafe(t){return String(t).replace(/[^\w\- ]+/g,'').trim().replace(/\s+/g,'-')||'building'}
 function bldCsv(R,ports){var rows;
-  if(ports){rows=[['Building','Room','Jack','Label','Type','Closet','Patch panel / jack port','Switch port','Status']];
+  if(ports){rows=[['Building','Room','Port','Label','Type','Closet','Patch panel port','Switch port','Status']];
     R.rooms.forEach(function(r){r.rows.forEach(function(x){rows.push([R.name,r.room,x.jack,x.label,x.type,x.closet,x.panel,x.sw,x.status])})})}
   else{rows=[['Building','Room','Ports','Goes to closet','Patched to switch','Not patched','Other devices']];
     R.rooms.forEach(function(r){rows.push([R.name,r.room,r.ports,closetsTxt(r,true),r.live,r.ports-r.live,otherTxt(r.other)])});
@@ -3561,7 +3561,7 @@ function bldPrint(R){var d=new Date(),pct=R.tot.ports?Math.round(R.tot.live*100/
     '<div class="noprint" style="margin-bottom:10px"><button onclick="print()">Print / save as PDF</button></div>'+
     '<h1>'+esc(R.name)+' — rooms and closets</h1><div class="sub">Closet Mapper report · '+esc(d.toLocaleDateString([],{year:'numeric',month:'long',day:'numeric'}))+(cloudOn()&&CS.team?' · '+esc(CS.team.name):'')+'</div>'+
     '<div class="tiles"><div class="tile"><b>'+R.tot.rooms+'</b>rooms</div><div class="tile"><b>'+R.tot.ports+'</b>ports to rooms</div><div class="tile"><b>'+R.tot.live+'</b>patched to a switch ('+pct+'%)</div><div class="tile"><b>'+R.closets.length+'</b>closets</div>'+(R.tot.other?'<div class="tile"><b>'+R.tot.other+'</b>cameras, readers &amp; other</div>':'')+'</div>'+
-    (R.missing?'<p class="warn">'+R.missing+' labelled jack'+(R.missing===1?' has':'s have')+' no room set and '+(R.missing===1?'is':'are')+' not included.</p>':'')+
+    (R.missing?'<p class="warn">'+R.missing+' labelled port'+(R.missing===1?' has':'s have')+' no room set and '+(R.missing===1?'is':'are')+' not included.</p>':'')+
     '<h2>Closets</h2><table><tr><th>Closet</th><th class="n">Rooms served</th><th class="n">Ports to rooms</th><th class="n">Patched to switch</th><th class="n">Not patched</th><th class="n">Other devices</th></tr>'+
     R.closets.map(function(c){return '<tr><td>'+esc(closetName(c.l))+'</td><td class="n">'+c.nrooms+'</td><td class="n">'+c.ports+'</td><td class="n">'+c.live+'</td><td class="n">'+(c.ports-c.live)+'</td><td class="n">'+(c.other||'')+'</td></tr>'}).join('')+
     '<tr class="tot"><td>Total</td><td class="n">'+R.tot.rooms+'</td><td class="n">'+R.tot.ports+'</td><td class="n">'+R.tot.live+'</td><td class="n">'+(R.tot.ports-R.tot.live)+'</td><td class="n">'+(R.tot.other||'')+'</td></tr></table>'+
@@ -3569,7 +3569,7 @@ function bldPrint(R){var d=new Date(),pct=R.tot.ports?Math.round(R.tot.live*100/
     R.rooms.map(function(r){return '<tr><td><b>'+esc(r.room)+'</b></td><td class="n">'+r.ports+'</td><td>'+esc(closetsTxt(r,true))+'</td><td class="n">'+r.live+'</td><td>'+esc(otherTxt(r.other))+'</td></tr>'}).join('')+'</table>'+
     '<h2>Rooms by closet</h2>'+R.closets.filter(function(c){return c.ports||c.other}).map(function(c){var rs=R.rooms.filter(function(r){return r.rows.some(function(x){return x.closetId===c.l.id})});
       return '<h3>'+esc(closetName(c.l))+' <span class="muted">· '+c.nrooms+' room'+(c.nrooms===1?'':'s')+' · '+c.ports+' port'+(c.ports===1?'':'s')+'</span></h3><p style="margin:2px 0 6px">'+rs.map(function(r){var n=r.closets[c.l.id]||0;return esc(r.room)+(n?' ('+n+')':'')}).join(', ')+'</p>'}).join('')+
-    '<h2>Port detail</h2>'+R.rooms.map(function(r){return '<div class="room"><h3>'+esc(/^\d/.test(r.room)?'Room '+r.room:r.room)+' <span class="muted">· '+r.ports+' port'+(r.ports===1?'':'s')+'</span></h3><table><tr><th>Jack</th><th>Type</th><th>Closet</th><th>Patch panel / port</th><th>Switch port</th><th>Status</th></tr>'+
+    '<h2>Port detail</h2>'+R.rooms.map(function(r){return '<div class="room"><h3>'+esc(/^\d/.test(r.room)?'Room '+r.room:r.room)+' <span class="muted">· '+r.ports+' port'+(r.ports===1?'':'s')+'</span></h3><table><tr><th>Port</th><th>Type</th><th>Closet</th><th>Patch panel / port</th><th>Switch port</th><th>Status</th></tr>'+
       r.rows.map(function(x){return '<tr><td>'+esc(x.jack)+'</td><td>'+esc(x.type)+'</td><td>'+esc(x.closet)+'</td><td>'+esc(x.panel)+'</td><td>'+esc(x.sw)+'</td><td>'+esc(x.status)+'</td></tr>'}).join('')+'</table></div>'}).join('')+
     '</body></html>';
   var w=null;try{w=window.open('','_blank')}catch(e){}
@@ -3583,13 +3583,13 @@ function renderRooms(){if(ui.rmode==='bld'&&!ui.room)return renderBuilding();var
   var inB=function(g){return !ui.rbld||g.bd.id===ui.rbld};
   var list=M.list.filter(function(g){if(!inB(g))return false;if(!q)return true;if(roomNorm(g.room).indexOf(roomNorm(q))>=0||g.room.toLowerCase().indexOf(q)>=0)return true;
     return g.drops.concat(g.things).some(function(e){return e.label.toLowerCase().indexOf(q)>=0||e.t.nodes.some(function(n){return pn(n).toLowerCase().indexOf(q)>=0})})});
-  var h=roomsHead()+'<div class="row" style="align-items:center;margin:4px 0"><p class="muted" style="margin:0;flex:1">'+(ui.rbld?'Filtered to one building':'Every building')+' · click a room for the full cable paths.</p><button id="colRooms" title="Send every jack of a colour to one room, e.g. cameras to CAM">Rooms by colour…</button></div>'+
-    '<div class="row"><input id="rq" type="search" placeholder="Room, jack or port (e.g. 157, A1, SW1-12)" value="'+esc(ui.rq||'')+'" style="flex:1;max-width:520px;font-size:15px;padding:8px 10px">'+
+  var h=roomsHead()+'<div class="row" style="align-items:center;margin:4px 0"><p class="muted" style="margin:0;flex:1">'+(ui.rbld?'Filtered to one building':'Every building')+' · click a room for the full cable paths.</p><button id="colRooms" title="Send every port of a colour to one room, e.g. cameras to CAM">Rooms by colour…</button></div>'+
+    '<div class="row"><input id="rq" type="search" placeholder="Room, port or port (e.g. 157, A1, SW1-12)" value="'+esc(ui.rq||'')+'" style="flex:1;max-width:520px;font-size:15px;padding:8px 10px">'+
     (bls.length>1?'<select id="rbld" title="Show rooms in one building" style="font-size:15px;padding:8px 10px"><option value="">All buildings</option>'+bls.map(function(b){var n=M.list.filter(function(g){return g.bd.id===b.id}).length;return '<option value="'+esc(b.id)+'"'+(ui.rbld===b.id?' selected':'')+'>'+esc(b.name)+' ('+n+')</option>'}).join('')+'</select>':'')+
     '<span class="muted">'+list.length+' room'+(list.length===1?'':'s')+'</span></div>';
   var miss=M.missing.filter(function(e){return !ui.rbld||buildingOf(e.p).id===ui.rbld});
-  if(miss.length)h+='<div class="card warnbar"><span class="led warn"></span><b>'+miss.length+' labelled jack'+(miss.length===1?' has':'s have')+' no room yet.</b> <span class="muted">Rooms are set on each jack so nothing has to be guessed.</span> <button id="fillRooms" class="pri" style="margin-left:8px">Set rooms…</button></div>';
-  if(!list.length)h+='<div class="card muted">'+(M.list.length?(q?'No room matches “'+esc(ui.rq)+'”'+(ui.rbld?' in this building':'')+'.':'No rooms in this building yet.'):'No rooms yet. Open a jack and fill in “Room this jack serves”, or use Set rooms… above.')+'</div>';
+  if(miss.length)h+='<div class="card warnbar"><span class="led warn"></span><b>'+miss.length+' labelled port'+(miss.length===1?' has':'s have')+' no room yet.</b> <span class="muted">Rooms are set on each port so nothing has to be guessed.</span> <button id="fillRooms" class="pri" style="margin-left:8px">Set rooms…</button></div>';
+  if(!list.length)h+='<div class="card muted">'+(M.list.length?(q?'No room matches “'+esc(ui.rq)+'”'+(ui.rbld?' in this building':'')+'.':'No rooms in this building yet.'):'No rooms yet. Open a port and fill in “Room this port serves”, or use Set rooms… above.')+'</div>';
   else{h+='<div class="roomgrid">';
     var RMAX=5,rexp=ui.rexp||(ui.rexp={});
     list.slice(0,200).forEach(function(g){
@@ -3621,14 +3621,14 @@ function renderRoom(g){var m=el('main'),title=/^\d/.test(g.room)?'Room '+g.room:
   var cls=Object.keys(cl).sort(function(a,b){return natCmp(closetName(byId(S.locations,a)),closetName(byId(S.locations,b)))});
   var stLabel={live:'Patched to switch',patched:'Patched (no switch)',open:'Not patched',homerun:'Homerun'};
   var h='<div class="row" style="align-items:center"><button id="rback">'+(ui.roomBack==='bld'?'← Building overview':'← All rooms')+'</button><h2 style="margin:0">'+esc(title)+'</h2><span class="muted">'+esc(g.bd.name)+'</span>'+
-    '<span style="flex:1"></span><button id="rmEdit" title="Change the room or label of these jacks in one go">Edit jacks…</button><button id="rmPrint">Print room</button></div>'+
+    '<span style="flex:1"></span><button id="rmEdit" title="Change the room or label of these ports in one go">Edit ports…</button><button id="rmPrint">Print room</button></div>'+
     '<div class="tiles"><div class="tile"><b>'+g.drops.length+'</b><span>drop'+(g.drops.length===1?'':'s')+'</span></div>'+
       (g.drops.length?'<div class="tile"><b>'+live+'</b><span>patched to a switch</span></div><div class="tile"><b>'+(g.drops.length-live)+'</b><span>not patched</span></div>':'')+
       (g.things.length?'<div class="tile"><b>'+g.things.length+'</b><span>'+esc(otherTxt(tt).replace(/^\d+\s/,''))+'</span></div>':'')+
       '<div class="tile"><b>'+cls.length+'</b><span>closet'+(cls.length===1?'':'s')+': '+esc(cls.map(function(id){return closetName(byId(S.locations,id))}).join(', '))+'</span></div></div>';
   cls.forEach(function(id){var L=byId(S.locations,id),rows=cl[id].sort(function(a,b){return (a.thing-b.thing)||natCmp(a.name,b.name)});
-    h+='<h3 style="margin:16px 0 6px">'+(L?'<a href="#" data-goloc="'+L.id+'">'+esc(closetName(L))+'</a>':'?')+' <span class="muted" style="font-weight:400;font-size:13px">· '+rows.length+' jack'+(rows.length===1?'':'s')+(L&&siteOf(L)?'':'')+'</span></h3>'+
-      '<div class="tblwrap"><table class="rpt rmt"><tr><th>Jack</th><th>Label</th><th>Type</th><th>Patch panel</th><th>Switch port</th><th>Status</th><th></th></tr>'+
+    h+='<h3 style="margin:16px 0 6px">'+(L?'<a href="#" data-goloc="'+L.id+'">'+esc(closetName(L))+'</a>':'?')+' <span class="muted" style="font-weight:400;font-size:13px">· '+rows.length+' port'+(rows.length===1?'':'s')+(L&&siteOf(L)?'':'')+'</span></h3>'+
+      '<div class="tblwrap"><table class="rpt rmt"><tr><th>Port</th><th>Label</th><th>Type</th><th>Patch panel</th><th>Switch port</th><th>Status</th><th></th></tr>'+
       rows.map(function(x){var e=x.e,i=all.indexOf(x);return '<tr class="'+(x.thing?'th':'')+'"><td><b class="jk">'+esc(x.name)+'</b>'+(x.iss?' <span class="isb" title="Open issue">'+x.iss+'</span>':'')+'</td><td class="muted">'+esc(e.label||'')+'</td>'+
         '<td><span class="dot" style="background:'+(e.color||'var(--faint)')+'"></span>'+esc(x.type)+'</td><td class="mono"><a href="#" data-gop="'+e.p.id+'">'+esc(pn(e.p))+'</a>'+(e.how==='homerun'?' <span class="muted">(homerun)</span>':'')+'</td>'+
         '<td class="mono">'+(x.sw?'<a href="#" data-gop="'+x.sw.id+'">'+esc(pn(x.sw))+'</a>':'<span class="muted">—</span>')+'</td>'+
@@ -3649,21 +3649,21 @@ function roomPrint(g,all,title){var rows=all.slice().sort(function(a,b){return n
   var st={live:'Patched to switch',patched:'Patched (no switch)',open:'Not patched',homerun:'Homerun'};
   var h='<!doctype html><html><head><meta charset="utf-8"><title>'+esc(title)+' — '+esc(g.bd.name)+'</title><style>body{font:12px/1.4 -apple-system,Segoe UI,Arial,sans-serif;color:#111;padding:14mm;margin:0}h1{font-size:20px;margin:0}.sub{color:#555;margin:2px 0 12px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #bbb;padding:4px 6px;text-align:left}th{background:#eee}@page{margin:0}@media print{.noprint{display:none}}</style></head><body>'+
     '<div class="noprint" style="margin-bottom:10px"><button onclick="print()">Print / save as PDF</button></div><h1>'+esc(title)+'</h1><div class="sub">'+esc(g.bd.name)+' · '+g.drops.length+' drop'+(g.drops.length===1?'':'s')+(g.things.length?' · '+g.things.length+' other device'+(g.things.length===1?'':'s'):'')+' · '+esc(new Date().toLocaleDateString())+'</div>'+
-    '<table><tr><th>Jack</th><th>Label</th><th>Type</th><th>Closet</th><th>Patch panel</th><th>Switch port</th><th>Status</th></tr>'+rows.map(function(x){return '<tr><td><b>'+esc(x.name)+'</b></td><td>'+esc(x.e.label||'')+'</td><td>'+esc(x.type)+'</td><td>'+esc(x.l?closetName(x.l):'')+'</td><td>'+esc(pn(x.e.p))+'</td><td>'+esc(x.sw?pn(x.sw):'')+'</td><td>'+st[x.status]+'</td></tr>'}).join('')+'</table></body></html>';
+    '<table><tr><th>Port</th><th>Label</th><th>Type</th><th>Closet</th><th>Patch panel</th><th>Switch port</th><th>Status</th></tr>'+rows.map(function(x){return '<tr><td><b>'+esc(x.name)+'</b></td><td>'+esc(x.e.label||'')+'</td><td>'+esc(x.type)+'</td><td>'+esc(x.l?closetName(x.l):'')+'</td><td>'+esc(pn(x.e.p))+'</td><td>'+esc(x.sw?pn(x.sw):'')+'</td><td>'+st[x.status]+'</td></tr>'}).join('')+'</table></body></html>';
   var w=null;try{w=window.open('','_blank')}catch(e){}if(w&&w.document){w.document.open();w.document.write(h);w.document.close();setTimeout(function(){try{w.focus();w.print()}catch(e){}},400)}else dl(fileSafe(title)+'.html',h,'text/html')}
-// one place to give every labelled jack its room: suggestions come from the label, you confirm or change them
+// one place to give every labelled port its room: suggestions come from the label, you confirm or change them
 function fillRooms(missing,roomName){var rows=missing.slice(0,400);
-  modal(roomName?'Edit the jacks in '+(/^\d/.test(roomName)?'room ':'')+roomName:'Set rooms for '+missing.length+' jack'+(missing.length===1?'':'s'),[],function(){var n=0,nl=0;
+  modal(roomName?'Edit the ports in '+(/^\d/.test(roomName)?'room ':'')+roomName:'Set rooms for '+missing.length+' port'+(missing.length===1?'':'s'),[],function(){var n=0,nl=0;
     el('mbox').querySelectorAll('input[data-fr]').forEach(function(inp){var i=+inp.getAttribute('data-fr'),e=rows[i],v=inp.value.trim(),lb=el('mbox').querySelector('input[data-fl="'+i+'"]'),nlab=lb?lb.value.trim():e.label;
       if(nlab!==e.label){if(e.h)e.h.label=nlab;else e.p.label=nlab;nl++}
       if(!v)return;if(e.cur&&v===(e.room||''))return;if(e.h)e.h.room=v;else e.p.room=v;n++});
     if(!n&&!nl){if(roomName){return}toast('Nothing to save — type a room in at least one box.',1);return false}
-    commit();toast('Set the room on '+n+' jack'+(n===1?'':'s')+(nl?' and changed '+nl+' label'+(nl===1?'':'s'):'')+'. Ctrl+Z undoes it.')},function(){
+    commit();toast('Set the room on '+n+' port'+(n===1?'':'s')+(nl?' and changed '+nl+' label'+(nl===1?'':'s'):'')+'. Ctrl+Z undoes it.')},function(){
     var box=el('mbox'),w=document.createElement('div');w.style.minWidth='min(760px,90vw)';
     var known={};S.ports.concat(S.homeruns).forEach(function(x){var r=(x.room||'').trim();if(r)known[r]=1});CABLE_CODES.forEach(function(k){if(k[4])known[k[4]]=1});
-    w.innerHTML='<p class="muted" style="margin:0 0 8px">Type the room each jack serves (rooms you have used before are suggested). Boxes left empty are skipped. You can fix a label here too. <b>Enter</b> moves to the next jack; <b>Fill down</b> copies a room to every empty box below it.</p>'+
+    w.innerHTML='<p class="muted" style="margin:0 0 8px">Type the room each port serves (rooms you have used before are suggested). Boxes left empty are skipped. You can fix a label here too. <b>Enter</b> moves to the next port; <b>Fill down</b> copies a room to every empty box below it.</p>'+
       '<datalist id="frRooms">'+Object.keys(known).sort(natCmp).map(function(r){return '<option value="'+esc(r)+'">'}).join('')+'</datalist>'+
-      '<div style="max-height:56vh;overflow:auto"><table class="frt"><tr><th>Jack</th><th>Label</th><th>Room</th><th></th><th>Shows as</th></tr>'+rows.map(function(e,i){var gs=e.cur?(e.room||''):guessRoom(e.label,e.color);
+      '<div style="max-height:56vh;overflow:auto"><table class="frt"><tr><th>Port</th><th>Label</th><th>Room</th><th></th><th>Shows as</th></tr>'+rows.map(function(e,i){var gs=e.cur?(e.room||''):guessRoom(e.label,e.color);
         return '<tr><td class="mono" style="white-space:nowrap">'+esc(pn(e.p))+(e.how==='homerun'?' <span class="muted">(homerun)</span>':'')+'<br><small class="muted">'+esc((portWhere(e.p).l||{}).name||'')+'</small></td>'+
           '<td><input class="frin" data-fl="'+i+'" value="'+esc(e.label)+'"></td><td><input class="frin" data-fr="'+i+'" list="frRooms" value="'+esc(gs)+'" placeholder="Room…"></td>'+
           '<td><button type="button" class="ib" data-fd="'+i+'" title="Copy this room to every empty box below">Fill down</button></td><td class="muted" data-sa="'+i+'">'+esc(gs?dropName(e.label,gs):'')+'</td></tr>'}).join('')+'</table></div>'+
@@ -3690,7 +3690,7 @@ function capOf(devs,racks){var o={u:0,uT:0,sw:0,swT:0,jk:0,jkT:0,fb:0,fbT:0,ol:0
 function capBar(u,t,label){if(!t)return '<td class="cap muted">—</td>';var pc=Math.round(u/t*100),free=t-u,col=pc>=90?'var(--bad)':pc>=75?'var(--warn)':'var(--ok)';
   return '<td class="cap" title="'+label+': '+u+' of '+t+' used, '+free+' free"><div class="bar"><i style="width:'+pc+'%;background:'+col+'"></i></div><span><b>'+free+'</b> free <span class="muted">/ '+t+'</span></span></td>'}
 // ================= Issues: problems flagged on a port, device, rack or closet =================
-var ISSUE_TYPES=[['broken','Broken jack or port'],['run','Needs a cable run'],['label','Label is wrong or missing'],['replace','Hardware needs replacing'],['tidy','Needs tidying'],['other','Something else']];
+var ISSUE_TYPES=[['broken','Broken port or port'],['run','Needs a cable run'],['label','Label is wrong or missing'],['replace','Hardware needs replacing'],['tidy','Needs tidying'],['other','Something else']];
 var ISX={};   // target id -> open issue count (rebuilt every render)
 function issueIndex(){ISX={};(S.issues||[]).forEach(function(i){if(i.status==='open'&&i.on){ISX[i.on.id]=(ISX[i.on.id]||0)+1;ISX['loc:'+issueLoc(i)]=(ISX['loc:'+issueLoc(i)]||0)+1}})}
 function issueLoc(i){var o=i.on||{},x;if(o.kind==='loc')return o.id;if(o.kind==='rack'){x=byId(S.racks,o.id);return x?x.locId:i.loc}
@@ -3708,7 +3708,7 @@ function issueBox(kind,id,ex){var tgt=ex?ex.on:{kind:kind,id:id};var it=ex||{typ
   var go=function(mem){var opts=[['','Nobody yet']].concat(mem.map(function(m){return [m.uid,m.name]}));
     var o=ovl('issov','<h2 style="margin-top:0">'+(ex?'Edit issue':'Report a problem')+'</h2><p class="muted" style="margin-top:-6px">'+esc(nameOfTarget(tgt.kind,tgt.id))+' · '+esc(locFull(byId(S.locations,issueLoc({on:tgt})))||'')+'</p>'+
       '<label>What’s wrong<select id="isT">'+ISSUE_TYPES.map(function(t){return '<option value="'+t[0]+'"'+(t[0]===it.type?' selected':'')+'>'+esc(t[1])+'</option>'}).join('')+'</select></label>'+
-      '<label>Details<textarea id="isN" rows="3" placeholder="e.g. No link light, jack is loose, cable cut at the ceiling">'+esc(it.notes||'')+'</textarea></label>'+
+      '<label>Details<textarea id="isN" rows="3" placeholder="e.g. No link light, port is loose, cable cut at the ceiling">'+esc(it.notes||'')+'</textarea></label>'+
       '<label>Assign to'+(mem.length?'<select id="isA">'+opts.map(function(x){return '<option value="'+esc(x[0])+'"'+(it.assignee&&it.assignee.uid===x[0]?' selected':'')+'>'+esc(x[1])+'</option>'}).join('')+'</select>':'<input id="isA" value="'+esc(it.assignee&&it.assignee.name||'')+'" placeholder="Name (optional)">')+'</label>'+
       '<div class="row" style="margin-top:12px"><button class="pri" id="isOk">'+(ex?'Save':'Report it')+'</button><button id="isX">Cancel</button></div>',61);
     el('isX').onclick=function(){closeOvl('issov')};
@@ -3825,13 +3825,13 @@ function renderCapacity(){var m=el('main');
   var h='<div class="row"><h2 style="margin:0">Capacity</h2><span class="muted">free space in every closet — red is 90% or more used</span></div>';
   if(!S.locations.length){m.innerHTML=h+'<div class="card muted">Add a closet to see its capacity.</div>';return}
   var tot=capOf(S.devices,S.racks);
-  h+='<div class="capsum">'+[['Switch ports',tot.sw,tot.swT],['Patch jacks',tot.jk,tot.jkT],['Fiber strands',tot.fb,tot.fbT],['Rack space (U)',tot.u,tot.uT],['Power outlets',tot.ol,tot.olT]].map(function(x){
+  h+='<div class="capsum">'+[['Switch ports',tot.sw,tot.swT],['Patch ports',tot.jk,tot.jkT],['Fiber strands',tot.fb,tot.fbT],['Rack space (U)',tot.u,tot.uT],['Power outlets',tot.ol,tot.olT]].map(function(x){
     return '<div class="card"><small class="muted">'+x[0]+'</small><div class="big">'+(x[2]?(x[2]-x[1])+'<span class="muted"> free of '+x[2]+'</span>':'<span class="muted">none recorded</span>')+'</div></div>'}).join('')+'</div>';
-  h+='<table class="captab"><tr><th>Closet</th><th>Racks</th><th>Switch ports</th><th>Patch jacks</th><th>Fiber strands</th><th>Rack space (U)</th><th>Power outlets</th></tr>';
+  h+='<table class="captab"><tr><th>Closet</th><th>Racks</th><th>Switch ports</th><th>Patch ports</th><th>Fiber strands</th><th>Rack space (U)</th><th>Power outlets</th></tr>';
   groups.forEach(function(g){if(!g.locs.length)return;h+='<tr class="grp"><td colspan="7">'+esc(g.name)+'</td></tr>';
     g.locs.forEach(function(l){var rs=S.racks.filter(function(r){return r.locId===l.id}),ids={};rs.forEach(function(r){ids[r.id]=1});
       var ds=S.devices.filter(function(d){return ids[d.rackId]}),c=capOf(ds,rs);
-      h+='<tr><td><a href="#" data-cl="'+l.id+'">'+esc(l.label||l.name)+'</a></td><td class="mono">'+rs.length+'</td>'+capBar(c.sw,c.swT,'Switch ports')+capBar(c.jk,c.jkT,'Patch jacks')+capBar(c.fb,c.fbT,'Fiber strands')+capBar(c.u,c.uT,'Rack space')+capBar(c.ol,c.olT,'Power outlets')+'</tr>'})});
+      h+='<tr><td><a href="#" data-cl="'+l.id+'">'+esc(l.label||l.name)+'</a></td><td class="mono">'+rs.length+'</td>'+capBar(c.sw,c.swT,'Switch ports')+capBar(c.jk,c.jkT,'Patch ports')+capBar(c.fb,c.fbT,'Fiber strands')+capBar(c.u,c.uT,'Rack space')+capBar(c.ol,c.olT,'Power outlets')+'</tr>'})});
   m.innerHTML=h+'</table>';
   m.querySelectorAll('[data-cl]').forEach(function(a){a.onclick=function(e){e.preventDefault();ui.loc=a.getAttribute('data-cl');ui.rack=null;ui.view='map';render()}})}
 
@@ -3847,7 +3847,7 @@ function histDiff(prevJ){var A;try{A=JSON.parse(prevJ)}catch(e){return []}
       if(t[0]==='devices'&&x.startU!==y.startU)out.push('Moved '+t[2](y)+' U'+x.startU+' → U'+y.startU);
       if(t[2](x)!==t[2](y))out.push('Renamed '+t[1]+' '+t[2](x)+' → '+t[2](y));
       if(t[0]==='devices'&&x.rackId!==y.rackId)out.push('Moved '+t[2](y)+' to another rack');
-      if(t[0]==='devices'&&(x.removable||'')!==(y.removable||''))out.push(t[2](y)+': jacks set to '+(y.removable==='yes'?'removable':y.removable==='no'?'fixed':'not set'))}});
+      if(t[0]==='devices'&&(x.removable||'')!==(y.removable||''))out.push(t[2](y)+': keystone jacks set to '+(y.removable==='yes'?'removable':y.removable==='no'?'fixed':'not set'))}});
     Object.keys(a).forEach(function(k){if(!b[k])out.push('Deleted '+t[1]+' '+t[2](a[k]))})});
   var pa=idx(A.ports),pb=idx(B.ports),lab=0,col=0,labEx=[],rmc=0,rmEx='';
   Object.keys(pb).forEach(function(k){var x=pa[k],y=pb[k];if(!x)return;
@@ -3929,7 +3929,7 @@ function renderFloor(){var m=el('main');if(!Array.isArray(S.floorplans))S.floorp
     fp.pins.map(function(p){var g=groups.filter(function(x){return roomNorm(x.room)===p.key})[0];return '<div class="pin'+(g?'':' lost')+(ui.fpSel===p.key?' sel':'')+'" data-pin="'+esc(p.key)+'" style="left:'+(p.x*100)+'%;top:'+(p.y*100)+'%"><span>'+esc(g?g.room:p.room)+'</span></div>'}).join('')+'</div>'+
     '<aside class="fpside"><div class="muted" style="font-size:12px;margin-bottom:6px">'+(placing?'Click on the plan where <b>'+esc(placing.room)+'</b> is. <a href="#" id="fpCancel">Cancel</a>':'Click a room, then click the plan to pin it. Drag a pin to move it.')+'</div>'+
     (groups.length?groups.map(function(g){var k=roomNorm(g.room),pl=placed[k];return '<div class="fprow'+(pl?' done':'')+(placing&&placing.key===k?' on':'')+'" data-room="'+esc(k)+'"><span class="led '+(pl?'on':'')+'"></span><b>'+esc(g.room)+'</b><span class="muted mono" style="margin-left:auto;font-size:11px">'+g.drops.length+'</span></div>'}).join('')
-      :'<p class="muted">No rooms in this building yet. Set rooms on jacks first (Rooms tab ▸ Set rooms…).</p>')+
+      :'<p class="muted">No rooms in this building yet. Set rooms on ports first (Rooms tab ▸ Set rooms…).</p>')+
     '<p class="muted" style="font-size:12px;margin-top:10px">'+Object.keys(placed).length+' of '+groups.length+' rooms pinned</p></aside></div>';
   m.innerHTML=h;bindFp();
   var C=el('fpC');
@@ -3949,7 +3949,7 @@ function renderFloor(){var m=el('main');if(!Array.isArray(S.floorplans))S.floorp
   if(ui.fpSel){var p=fp.pins.filter(function(x){return x.key===ui.fpSel})[0];if(p)pinPop(fp,p,groups)}}
 function pinPop(fp,p,groups){var C=el('fpC'),g=groups.filter(function(x){return roomNorm(x.room)===p.key})[0],pop=document.createElement('div');pop.className='pinpop';
   pop.style.left=(p.x*100)+'%';pop.style.top=(p.y*100)+'%';if(p.x<0.25)pop.style.transform='translate(-12px,10px)';else if(p.x>0.75)pop.style.transform='translate(calc(-100% + 12px),10px)';
-  pop.innerHTML='<b>'+esc(g?g.room:p.room)+'</b>'+(g?'<ul>'+g.drops.map(function(e){return '<li><span class="mono">'+esc(dropName(e.label,g.room)||'—')+'</span> <span class="muted mono">'+esc(endOf(e))+'</span></li>'}).join('')+g.things.map(function(e){return '<li>'+esc(e.label)+' <span class="muted">'+esc(thingName(e.color))+'</span></li>'}).join('')+'</ul>':'<p class="muted">This room no longer has any jacks.</p>')+
+  pop.innerHTML='<b>'+esc(g?g.room:p.room)+'</b>'+(g?'<ul>'+g.drops.map(function(e){return '<li><span class="mono">'+esc(dropName(e.label,g.room)||'—')+'</span> <span class="muted mono">'+esc(endOf(e))+'</span></li>'}).join('')+g.things.map(function(e){return '<li>'+esc(e.label)+' <span class="muted">'+esc(thingName(e.color))+'</span></li>'}).join('')+'</ul>':'<p class="muted">This room no longer has any ports.</p>')+
     '<div class="row">'+(g?'<button class="pri" id="ppOpen">Open room</button>':'')+'<button id="ppDel">Remove pin</button></div>';
   pop.onclick=function(e){e.stopPropagation()};C.appendChild(pop);
   if(el('ppOpen'))el('ppOpen').onclick=function(){ui.view='rooms';ui.room=g.key;ui.fpSel=null;render()};
@@ -3970,8 +3970,8 @@ function woItems(r,oc){var it=[],dnI=function(id){var d=oc.byDev[id];return d?dn
   oc.adds.forEach(function(m){add('Patch panels','Add a new patch panel at U'+m.at+(m.sw?(m.dir==='above'?' above ':' below ')+dn(m.sw):' under the last patch panel')+' (from your spares)')});
   oc.dmoves.forEach(function(m){add('Patch panels','Move '+dn(m.d)+' from U'+m.from+' to U'+m.to)});
   oc.removals.forEach(function(d){add('Patch panels','Take out '+dn(d)+' (U'+d.startU+') — nothing needs it')});
-  oc.jmoves.filter(function(m){return jackInUse(m.port)}).forEach(function(m){add('Keystone jacks',dnI(m.fromDev)+' jack '+m.from+(m.port.label?' “'+m.port.label+'”':'')+' → '+(m.fromDev===m.toDev?'':dnI(m.toDev)+' ')+'position '+m.to)});
-  oc.hmoves.forEach(function(m){add('Homeruns','Homerun '+(m.h.label||'(no label)')+' on '+dn(m.swFrom)+' port '+m.from+': terminate on '+dn(m.panel)+' jack '+m.jack+', cord to '+dn(m.swTo)+' port '+m.to)});
+  oc.jmoves.filter(function(m){return jackInUse(m.port)}).forEach(function(m){add('Keystone jacks',dnI(m.fromDev)+' port '+m.from+(m.port.label?' “'+m.port.label+'”':'')+' → '+(m.fromDev===m.toDev?'':dnI(m.toDev)+' ')+'position '+m.to)});
+  oc.hmoves.forEach(function(m){add('Homeruns','Homerun '+(m.h.label||'(no label)')+' on '+dn(m.swFrom)+' port '+m.from+': terminate on '+dn(m.panel)+' port '+m.jack+', cord to '+dn(m.swTo)+' port '+m.to)});
   oc.smoves.forEach(function(m){add('Patch cords','Cord from '+pn(m.link.pj)+': '+(m.fromSw!==m.toSw?dn(m.fromSw)+' port '+m.from+' → '+dn(m.toSw)+' port '+m.to:dn(m.toSw)+' port '+m.from+' → port '+m.to))});
   return it}
 function woPrint(oc){return [oc.adds.length,oc.dmoves.length,oc.removals.length,oc.jmoves.length,oc.hmoves.length,oc.smoves.length].join('/')}
@@ -3993,7 +3993,7 @@ function renderWO(r){var m=el('main'),wo=S.workorders[r.id],done=wo.items.filter
   el('woDel').onclick=function(){if(!confirm('Delete this work order? Your map is not changed.'))return;delete S.workorders[r.id];ui.wo=null;commit()};
   m.querySelectorAll('[data-wi]').forEach(function(c){c.onchange=function(){wo.items[+c.getAttribute('data-wi')].done=c.checked;save();renderWO(r)}});
   el('woApply').onclick=function(){var left=tot-done;
-    if(!confirm((left?left+' step'+(left===1?' is':'s are')+' not ticked yet.\n\n':'')+'Apply the optimised plan to the map for '+rackName2(r)+'?\n\nPanels, jacks, homeruns and cords are moved in the map to match the plan. Only do this once the rack really looks like that. Ctrl+Z undoes it.'))return;
+    if(!confirm((left?left+' step'+(left===1?' is':'s are')+' not ticked yet.\n\n':'')+'Apply the optimised plan to the map for '+rackName2(r)+'?\n\nPanels, ports, homeruns and cords are moved in the map to match the plan. Only do this once the rack really looks like that. Ctrl+Z undoes it.'))return;
     var n=applyPlan(r);delete S.workorders[r.id];ui.wo=null;commit();toast('Map updated: '+n+' change'+(n===1?'':'s')+'. Ctrl+Z undoes it.')}}
 // make the map match the optimised plan (only ever run from a work order, on request)
 function applyPlan(r){var oc=optimise(r),idMap={},n=0;function D(id){return idMap[id]||id}
@@ -4016,7 +4016,7 @@ function applyPlan(r){var oc=optimise(r),idMap={},n=0;function D(id){return idMa
   return n}
 // ================= OPTIMIZER: plan a closet from scratch in a sandbox =================
 // The plan lives in S.plans[closetId] and never touches the real racks (Rack view keeps the real data).
-// Room drops (labelled jacks + homeruns in this closet) are dragged onto plan patch-panel jacks; cords are dragged jack → switch port.
+// Room drops (labelled ports + homeruns in this closet) are dragged onto plan patch-panel ports; cords are dragged port → switch port.
 var PZ={U:70,W:820,NAME:150};
 function planFor(l){if(!S.plans)S.plans={};var p=S.plans[l.id];
   if(!p){var rs=S.racks.filter(function(r){return r.locId===l.id});
@@ -4036,7 +4036,7 @@ function pdPos(d,num,x,y,w,h){var g=pdGrid(d),k=num-1,zz=numMode(d)==='zigzag'&&
   return {x:cx,y:y+(g.rows===1?h/2:6+row*((h-12)/g.rows)+(h-12)/g.rows/2),s:ps2}}
 // on a crowded 48-port panel show the short form: the drop within the room, or the room number
 function pzShort(dr,tight){if(!tight)return dr.label||dr.room;var dn2=dropName(dr.label,dr.room);if(dn2&&dn2!==dr.label)return dn2;return dr.room||dr.label}
-// a jack's label written sideways above (or for a 48-port panel's bottom row, below) the jack, up to two short lines
+// a port's label written sideways above (or for a 48-port panel's bottom row, below) the port, up to two short lines
 function pzLabel(p,text,fill){if(!text||p.lt==null)return '';var room=p.lb-p.lt,fs=p.rows===2?7:8,mc=Math.max(2,Math.floor(room/(fs*0.58))),t=String(text).trim(),lines;
   if(t.length<=mc)lines=[t];else{var cut=t.lastIndexOf(' ',mc);if(cut<2)cut=mc;var a=t.slice(0,cut).trim(),b=t.slice(cut).trim();if(b.length>mc)b=b.slice(0,mc-1)+'…';lines=[a,b]}
   var gap=fs+1,x1=lines.length===1?p.x+fs*0.36:p.x-gap/2+fs*0.36,below=p.rows===2&&p.row===1;
@@ -4050,19 +4050,19 @@ function renderOptimizer(){var m=el('main'),l=byId(S.locations,ui.loc);
   var placed=drops.filter(function(d){return byDrop[d.id]}).length;
   var h='<div class="row"><h2 style="margin:0">Optimizer</h2><span class="muted">a sandbox plan for '+esc(l.label||l.name)+' — Rack view is not changed</span><span style="flex:1"></span>'+
     '<span class="mono" style="color:'+(placed===drops.length&&drops.length?'var(--ok)':'var(--muted)')+'">'+placed+' / '+drops.length+' placed</span>'+
-    '<button id="pzAuto" title="Put every unplaced drop on the next free jack, colours together and rooms in order">Auto-place the rest</button><button class="dng" id="pzReset">Start over</button></div>';
+    '<button id="pzAuto" title="Put every unplaced drop on the next free port, colours together and rooms in order">Auto-place the rest</button><button class="dng" id="pzReset">Start over</button></div>';
   h+='<div class="pzwrap"><aside class="pzside"><input id="pzq" type="search" placeholder="Filter rooms or labels" value="'+esc(ui.pzq||'')+'"><div class="pzlist">';
   var lastRoom=null;drops.filter(function(d){return !q||(d.room+' '+d.label+' '+d.now).toLowerCase().indexOf(q)>=0}).forEach(function(d){
     if(d.room!==lastRoom){lastRoom=d.room;h+='<div class="pzroom">'+(d.room?'Room '+esc(d.room):'No room set')+'</div>'}
     var at=byDrop[d.id],dv=at&&byId(P.devices,at.dev);
     h+='<div class="pzdrop'+(at?' placed':'')+'" data-drop="'+esc(d.id)+'" title="Now: '+esc(d.now)+'"><i style="background:'+(d.color||'var(--faint)')+'"></i><span>'+esc(dropName(d.label,d.room)||d.label||'—')+'</span><small>'+(at?esc((dv?dv.name:'?')+' · '+at.num):esc(d.now))+'</small></div>'});
-  if(!drops.length)h+='<p class="muted" style="padding:8px">No room drops in this closet yet. Label patch-panel jacks (and set their rooms) in Rack view, and they show up here to plan with.</p>';
+  if(!drops.length)h+='<p class="muted" style="padding:8px">No room drops in this closet yet. Label patch-panel ports (and set their rooms) in Rack view, and they show up here to plan with.</p>';
   h+='</div></aside><div class="pzmain"><div class="row" style="margin:0 0 6px">'+P.racks.map(function(r){return '<button class="chip'+(r.id===rk.id?' on':'')+'" data-pzr="'+r.id+'">'+esc(r.name)+' <span class="muted">'+r.height+'U</span></button>'}).join('')+
     '<button id="pzAddR" title="Add another rack to the plan">+ Rack</button><button id="pzRenR">Rename</button>'+(P.racks.length>1?'<button id="pzDelR" class="dng">Remove rack</button>':'')+'</div><div class="pzrackwrap" id="pzrw">'+planRackSVG(P,rk,drops)+'</div>'+
-    (COARSE?'<p class="muted" style="font-size:12px">On a tablet: tap something, then tap where it goes — or press and hold, then drag. Tap a jack for more.</p>':'')+'<p class="muted" style="font-size:12px">Drag hardware from the right into a slot · drag any device to move it · drag a room drop onto a patch-panel jack · drag a jack back to the list to take it off · drag from a jack to a switch port to add a cord · click a jack for more.</p></div>'+
+    (COARSE?'<p class="muted" style="font-size:12px">On a tablet: tap something, then tap where it goes — or press and hold, then drag. Tap a port for more.</p>':'')+'<p class="muted" style="font-size:12px">Drag hardware from the right into a slot · drag any device to move it · drag a room drop onto a patch-panel port · drag a port back to the list to take it off · drag from a port to a switch port to add a cord · click a port for more.</p></div>'+
     '<aside class="pzhw"><div class="sideHead" style="padding:0 0 6px">Hardware</div>'+PRESETS.map(function(pr,i){return '<div class="tpl" data-ptpl="'+i+'" style="border-left-color:'+deviceColor({kind:pr.kind})+'"><span>'+esc(pr.name)+'</span><small>'+pr.h+'U</small></div>'}).join('')+'</aside></div>';
   var sel=ui.pzSel;if(sel){var what=sel.type==='drop'?(function(){var x=drops.filter(function(y){return y.id===sel.id})[0];return x?(dropName(x.label,x.room)||x.label):'drop'})():sel.type==='hw'?sel.pr.name:sel.type==='move'?sel.d.name:(byId(P.devices,sel.dev)||{name:'?'}).name+' · '+sel.num;
-    var next=sel.type==='drop'?'tap a patch-panel jack to place it':sel.type==='hw'?'tap an empty slot to add it':sel.type==='move'?'tap an empty slot to move it':'tap another port to connect or move it';
+    var next=sel.type==='drop'?'tap a patch-panel port to place it':sel.type==='hw'?'tap an empty slot to add it':sel.type==='move'?'tap an empty slot to move it':'tap another port to connect or move it';
     h='<div class="pzbar"><b>'+esc(what)+'</b> selected — '+next+'<button id="pzSelX" class="ib">Cancel</button></div>'+h}
   m.innerHTML=h;bindOptimizer(l,P,rk,drops,byDrop);
   if(el('pzSelX'))el('pzSelX').onclick=function(){ui.pzSel=null;renderOptimizer()};
@@ -4097,12 +4097,12 @@ function bindOptimizer(l,P,rk,drops,byDrop){var m=el('main'),svg=el('pzsvg');
   el('pzReset').onclick=function(){typeToDelete('plan for',l.label||l.name,'This clears the plan for <b>'+esc(l.label||l.name)+'</b> — its racks, hardware, placed drops and cords. Rack view is not touched.',function(){delete S.plans[l.id];ui.pzRack=null;done()})};
   el('pzAuto').onclick=function(){var free=[];P.racks.forEach(function(r){P.devices.filter(function(d){return d.rackId===r.id&&d.kind==='patch'}).sort(function(a,b){return b.startU-a.startU}).forEach(function(d){var J=P.jacks[d.id]||{};for(var n=1;n<=d.portCount;n++)if(!J[n])free.push({d:d,n:n})})});
     var todo=drops.filter(function(d){return !byDrop[d.id]}).sort(function(a,b){return colorRank(a.color)-colorRank(b.color)||natCmp(roomNorm(a.room),roomNorm(b.room))||natCmp(a.label,b.label)});
-    if(!todo.length)return toast('Every drop is already placed.');if(!free.length)return toast('Add a patch panel first — there are no free jacks in the plan.',1);
+    if(!todo.length)return toast('Every drop is already placed.');if(!free.length)return toast('Add a patch panel first — there are no free ports in the plan.',1);
     var k=0;todo.forEach(function(d){var f=free[k];if(!f)return;k++;(P.jacks[f.d.id]=P.jacks[f.d.id]||{})[f.n]=d.id});done();toast('Placed '+k+' drop'+(k===1?'':'s')+(k<todo.length?' — '+(todo.length-k)+' still need a panel':'')+'.')};
   m.querySelectorAll('[data-pdel]').forEach(function(t){t.onclick=function(e){e.stopPropagation();var d=byId(P.devices,t.getAttribute('data-pdel'));var used=Object.keys(P.jacks[d.id]||{}).length;
     if(!confirm('Remove '+d.name+' from the plan?'+(used?' Its '+used+' placed drop'+(used===1?'':'s')+' go back to the list.':'')))return;
     P.devices=P.devices.filter(function(x){return x!==d});delete P.jacks[d.id];P.cords=P.cords.filter(function(c){return c[0]!==d.id&&c[2]!==d.id});done()}});
-  // ---- one pointer-based drag for everything: drops, hardware, devices, jacks
+  // ---- one pointer-based drag for everything: drops, hardware, devices, ports
   var drag=null,ghost=null;
   function uAt(ev){var r=svg.getBoundingClientRect(),k=(PZ.W+40)/r.width,yy=(ev.clientY-r.top)*k-10;return rk.height-Math.floor(yy/PZ.U)}
   function hit(ev){var t=document.elementFromPoint(ev.clientX,ev.clientY);return t&&t.closest?t.closest('[data-pp]'):null}
@@ -4137,11 +4137,11 @@ function bindOptimizer(l,P,rk,drops,byDrop){var m=el('main'),svg=el('pzsvg');
   function pzKey(d){return d.type+':'+(d.id||d.dev||'')+':'+(d.num||'')+':'+(d.pr?d.pr.name:'')+':'+(d.d?d.d.id:'')}
   function act(d,ev,tap){
     var inList=!tap&&document.elementFromPoint(ev.clientX,ev.clientY);inList=inList&&inList.closest&&inList.closest('.pzside');
-    if(inList&&d.type==='port'){var J0=P.jacks[d.dev]||{};if(J0[d.num]){delete J0[d.num];toast('Taken off the jack.');return done()}return}
+    if(inList&&d.type==='port'){var J0=P.jacks[d.dev]||{};if(J0[d.num]){delete J0[d.num];toast('Taken off the port.');return done()}return}
     if(d.type==='hw'||d.type==='move'){var hU=d.type==='hw'?d.pr.h:d.d.heightU,u=uAt(ev)-hU+1;if(!planFits(P,rk,u,hU,d.d&&d.d.id))return toast('That spot is taken or off the rack.',1);
       if(d.type==='hw')P.devices.push({id:uid(),rackId:rk.id,kind:d.pr.kind,name:planName(P,d.pr.kind),portCount:d.pr.ports||0,startU:u,heightU:d.pr.h});else d.d.startU=u;return done()}
     var g=tap&&tap.type==='port'?svg.querySelector('[data-pp="'+tap.dev+':'+tap.num+'"]'):hit(ev);if(!g)return;var v=g.getAttribute('data-pp').split(':'),td=byId(P.devices,v[0]),tn=+v[1];
-    if(d.type==='drop'){if(td.kind!=='patch')return toast('Room drops go on patch-panel jacks. Drag from a jack to a switch port to add a cord.',1);
+    if(d.type==='drop'){if(td.kind!=='patch')return toast('Room drops go on patch-panel ports. Drag from a port to a switch port to add a cord.',1);
       var cur=byDrop[d.id];if(cur)delete P.jacks[cur.dev][cur.num];var J=P.jacks[td.id]=P.jacks[td.id]||{},prev=J[tn];J[tn]=d.id;
       if(prev&&cur)P.jacks[cur.dev][cur.num]=prev;return done()}
     if(d.type==='port'){if(d.dev===td.id&&d.num===tn)return;var sd=byId(P.devices,d.dev),sJ=P.jacks[d.dev]||{};
@@ -4151,10 +4151,10 @@ function bindOptimizer(l,P,rk,drops,byDrop){var m=el('main'),svg=el('pzsvg');
       P.cords.push([d.dev,d.num,td.id,tn]);return done()}}
   svg.oncontextmenu=function(ev){var g=ev.target.closest&&ev.target.closest('[data-pp]');if(!g)return;ev.preventDefault();ev.stopPropagation();var v=g.getAttribute('data-pp').split(':');jackMenu(ev,v[0],+v[1])};
   function jackMenu(ev,dev,num){var d=byId(P.devices,dev),J=P.jacks[dev]||{},dr=drops.filter(function(x){return x.id===J[num]})[0],cd=P.cords.filter(function(c){return (c[0]===dev&&c[1]===num)||(c[2]===dev&&c[3]===num)})[0],it=[];
-    if(dr)it.push(['Take '+(dropName(dr.label,dr.room)||dr.label)+' off this jack',function(){delete J[num];done()}]);
+    if(dr)it.push(['Take '+(dropName(dr.label,dr.room)||dr.label)+' off this port',function(){delete J[num];done()}]);
     if(cd){var o=cd[0]===dev?[cd[2],cd[3]]:[cd[0],cd[1]],od=byId(P.devices,o[0]);it.push(['Remove cord to '+(od?od.name:'?')+' · '+o[1],function(){P.cords=P.cords.filter(function(c){return c!==cd});done()}])}
-    it.push([(d.kind==='patch'?'Add a cord — tap a switch port next':'Add a cord — tap a patch-panel jack next'),function(){ui.pzSel={type:'port',dev:dev,num:num};renderOptimizer()}]);
-    if(dr)it.push(['Move '+(dropName(dr.label,dr.room)||dr.label)+' — tap another jack next',function(){ui.pzSel={type:'port',dev:dev,num:num};renderOptimizer()}]);
+    it.push([(d.kind==='patch'?'Add a cord — tap a switch port next':'Add a cord — tap a patch-panel port next'),function(){ui.pzSel={type:'port',dev:dev,num:num};renderOptimizer()}]);
+    if(dr)it.push(['Move '+(dropName(dr.label,dr.room)||dr.label)+' — tap another port next',function(){ui.pzSel={type:'port',dev:dev,num:num};renderOptimizer()}]);
     closeCtx();var mm=document.createElement('div');mm.className='menu';mm.innerHTML='<div class="mh">'+esc(d.name+' · '+num+(dr?' — '+(dr.room?'room '+dr.room+' · ':'')+dr.label:''))+'</div>';
     it.forEach(function(x){var b=document.createElement('div');b.className='mi';b.textContent=x[0];b.onclick=function(){closeCtx();x[1]()};mm.appendChild(b)});
     document.body.appendChild(mm);ctxEl=mm;mm.style.left=Math.min(ev.clientX,innerWidth-260)+'px';mm.style.top=Math.min(ev.clientY,innerHeight-mm.offsetHeight-8)+'px';
