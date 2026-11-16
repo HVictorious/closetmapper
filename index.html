@@ -363,6 +363,8 @@ table.rpt .n{text-align:right;font-family:var(--mono)}table.rpt tr.tot td{font-w
 .st-open{color:var(--warn);border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.1)}.st-patched{color:var(--muted)}.st-homerun{color:#93c5fd;border-color:#1e3a8a;background:rgba(59,130,246,.1)}
 [data-theme=light] .st-live{color:#15803d}[data-theme=light] .st-homerun{color:#1d4ed8}
 #rsvg .pt.flashpt rect{stroke:var(--accent)!important;stroke-width:4!important}
+.pzzoom{display:inline-flex;align-items:center;gap:4px}.pzzoom #pzZl{min-width:44px;text-align:center;font-family:var(--mono);font-size:12px}.pzzoom button.on{border-color:var(--accent);color:var(--accent)}
+.pzrackwrap{touch-action:pan-x pan-y}
 </style></head><body>
 <div id="shell">
 <aside id="side" aria-label="Sites, closets and racks"></aside>
@@ -419,7 +421,7 @@ function kindRow(k){for(var i=0;i<DEVICE_KINDS.length;i++)if(DEVICE_KINDS[i][0]=
 function kindOpts(){return DEVICE_KINDS.map(function(k){return [k[0],k[1]]})}
 function portsTxt(d){return (d.portCount?d.portCount+(d.kind==='pdu'||d.kind==='ups'?' outlets':sfpMain(d)?' SFP+ ports':' ports'):(d.kind==='pdu'||d.kind==='ups'?'no outlets':'no ports'))+(d.sfp?' + '+d.sfp+' SFP+':'')}
 function deviceColor(d){return d.color||DEV_FALLBACK[d.kind]||'#2563eb'}
-var APP_VERSION='4.2.1'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
+var APP_VERSION='4.2.2'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
 
 var Q='"'; // double-quote char used when building the cable rows on the Labels tab
 function siteFold(){var c={};(S.sites||[]).forEach(function(st,i){if(i>0)c[st.id]=true});return c}
@@ -4058,13 +4060,15 @@ function renderOptimizer(){var m=el('main'),l=byId(S.locations,ui.loc);
     h+='<div class="pzdrop'+(at?' placed':'')+'" data-drop="'+esc(d.id)+'" title="Now: '+esc(d.now)+'"><i style="background:'+(d.color||'var(--faint)')+'"></i><span>'+esc(dropName(d.label,d.room)||d.label||'—')+'</span><small>'+(at?esc((dv?dv.name:'?')+' · '+at.num):esc(d.now))+'</small></div>'});
   if(!drops.length)h+='<p class="muted" style="padding:8px">No room drops in this closet yet. Label patch-panel ports (and set their rooms) in Rack view, and they show up here to plan with.</p>';
   h+='</div></aside><div class="pzmain"><div class="row" style="margin:0 0 6px">'+P.racks.map(function(r){return '<button class="chip'+(r.id===rk.id?' on':'')+'" data-pzr="'+r.id+'">'+esc(r.name)+' <span class="muted">'+r.height+'U</span></button>'}).join('')+
-    '<button id="pzAddR" title="Add another rack to the plan">+ Rack</button><button id="pzRenR">Rename</button>'+(P.racks.length>1?'<button id="pzDelR" class="dng">Remove rack</button>':'')+'</div><div class="pzrackwrap" id="pzrw">'+planRackSVG(P,rk,drops)+'</div>'+
+    '<button id="pzAddR" title="Add another rack to the plan">+ Rack</button><button id="pzRenR">Rename</button>'+(P.racks.length>1?'<button id="pzDelR" class="dng">Remove rack</button>':'')+
+    '<span style="flex:1"></span><span class="pzzoom"><button class="ib" id="pzZo" title="Zoom out (Ctrl + scroll)">−</button><span id="pzZl" class="muted">100%</span><button class="ib" id="pzZi" title="Zoom in (Ctrl + scroll)">+</button>'+
+    '<button id="pzZf" title="Zoom out to show the whole rack">Whole rack</button><button id="pzZw" title="Fit the rack to the width of the page">Fit width</button></span></div><div class="pzrackwrap" id="pzrw">'+planRackSVG(P,rk,drops)+'</div>'+
     (COARSE?'<p class="muted" style="font-size:12px">On a tablet: tap something, then tap where it goes — or press and hold, then drag. Tap a port for more.</p>':'')+'<p class="muted" style="font-size:12px">Drag hardware from the right into a slot · drag any device to move it · drag a room drop onto a patch-panel port · drag a port back to the list to take it off · drag from a port to a switch port to add a cord · click a port for more.</p></div>'+
     '<aside class="pzhw"><div class="sideHead" style="padding:0 0 6px">Hardware</div>'+PRESETS.map(function(pr,i){return '<div class="tpl" data-ptpl="'+i+'" style="border-left-color:'+deviceColor({kind:pr.kind})+'"><span>'+esc(pr.name)+'</span><small>'+pr.h+'U</small></div>'}).join('')+'</aside></div>';
   var sel=ui.pzSel;if(sel){var what=sel.type==='drop'?(function(){var x=drops.filter(function(y){return y.id===sel.id})[0];return x?(dropName(x.label,x.room)||x.label):'drop'})():sel.type==='hw'?sel.pr.name:sel.type==='move'?sel.d.name:(byId(P.devices,sel.dev)||{name:'?'}).name+' · '+sel.num;
     var next=sel.type==='drop'?'tap a patch-panel port to place it':sel.type==='hw'?'tap an empty slot to add it':sel.type==='move'?'tap an empty slot to move it':'tap another port to connect or move it';
     h='<div class="pzbar"><b>'+esc(what)+'</b> selected — '+next+'<button id="pzSelX" class="ib">Cancel</button></div>'+h}
-  m.innerHTML=h;bindOptimizer(l,P,rk,drops,byDrop);
+  m.innerHTML=h;bindOptimizer(l,P,rk,drops,byDrop);pzZoomBind();
   if(el('pzSelX'))el('pzSelX').onclick=function(){ui.pzSel=null;renderOptimizer()};
   if(sel){var q2=sel.type==='drop'?'[data-drop="'+sel.id+'"]':sel.type==='hw'?'[data-ptpl="'+PRESETS.indexOf(sel.pr)+'"]':sel.type==='move'?'[data-pdev="'+sel.d.id+'"]':'[data-pp="'+sel.dev+':'+sel.num+'"]';var se=m.querySelector(q2);if(se)se.classList.add('pzsel')}
   if(keep.rk!=null&&el('pzrw'))el('pzrw').scrollTop=keep.rk;if(keep.ls!=null&&document.querySelector('.pzlist'))document.querySelector('.pzlist').scrollTop=keep.ls;window.scrollTo(keep.wx,keep.wy)}
@@ -4086,6 +4090,25 @@ function planRackSVG(P,rk,drops){var U=PZ.U,W=PZ.W,T=10,H=rk.height*U,dmap={};dr
   return s+'<g id="pzcords">'+lines+'</g><g id="pzghost"></g></svg>'}
 function planFits(P,rk,u,hU,skip){if(u<1||u+hU-1>rk.height)return false;return !P.devices.some(function(d){return d.rackId===rk.id&&d.id!==skip&&u+hU-1>=d.startU&&u<=d.startU+d.heightU-1})}
 function planName(P,kind){var pre=kind==='patch'?'Patch Panel ':kind==='switch'?'Switch ':kN(kind)+' ',n=1;while(P.devices.some(function(d){return d.name===pre+n}))n++;return pre+n}
+// ---- zoom for the Optimizer rack (null = fit to the page width, the old behaviour; a number = scale of the drawing)
+function pzApplyZoom(){var svg=el('pzsvg'),w=el('pzrw');if(!svg||!w)return;var vb=svg.viewBox.baseVal;
+  if(ui.pzZoom){svg.style.width=Math.round(vb.width*ui.pzZoom)+'px';svg.style.minWidth='0'}else{svg.style.width='100%';svg.style.minWidth='640px'}
+  var z=ui.pzZoom||(svg.getBoundingClientRect().width/vb.width);if(el('pzZl'))el('pzZl').textContent=Math.round(z*100)+'%';
+  if(el('pzZw'))el('pzZw').classList.toggle('on',!ui.pzZoom)}
+function pzCurZoom(){var svg=el('pzsvg');return ui.pzZoom||(svg?svg.getBoundingClientRect().width/svg.viewBox.baseVal.width:1)}
+function pzSetZoom(z,cx,cy){var svg=el('pzsvg'),w=el('pzrw');if(!svg||!w)return;var old=pzCurZoom();z=Math.max(0.15,Math.min(3,z));
+  var b=w.getBoundingClientRect();if(cx==null){cx=b.width/2;cy=b.height/2}
+  var ax=(w.scrollLeft+cx)/old,ay=(w.scrollTop+cy)/old;ui.pzZoom=z;pzApplyZoom();w.scrollLeft=ax*z-cx;w.scrollTop=ay*z-cy}
+function pzFitRack(){var svg=el('pzsvg'),w=el('pzrw');if(!svg||!w)return;var vb=svg.viewBox.baseVal;pzSetZoom(Math.min((w.clientHeight-8)/vb.height,(w.clientWidth-8)/vb.width));w.scrollTop=0;w.scrollLeft=0}
+function pzZoomBind(){var w=el('pzrw');if(!w)return;pzApplyZoom();
+  el('pzZo').onclick=function(){pzSetZoom(pzCurZoom()/1.25)};el('pzZi').onclick=function(){pzSetZoom(pzCurZoom()*1.25)};
+  el('pzZf').onclick=pzFitRack;el('pzZw').onclick=function(){ui.pzZoom=null;pzApplyZoom()};
+  w.addEventListener('wheel',function(e){if(!e.ctrlKey&&!e.metaKey)return;e.preventDefault();var b=w.getBoundingClientRect();pzSetZoom(pzCurZoom()*(e.deltaY<0?1.12:1/1.12),e.clientX-b.left,e.clientY-b.top)},{passive:false});
+  var pin=null;function td(t){return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY)}
+  w.addEventListener('touchstart',function(e){if(e.touches.length===2){var b=w.getBoundingClientRect();pin={d:td(e.touches),z:pzCurZoom(),cx:(e.touches[0].clientX+e.touches[1].clientX)/2-b.left,cy:(e.touches[0].clientY+e.touches[1].clientY)/2-b.top};window.__dragLive=true}},{passive:true});
+  w.addEventListener('touchmove',function(e){if(!pin||e.touches.length!==2)return;e.preventDefault();pzSetZoom(pin.z*td(e.touches)/pin.d,pin.cx,pin.cy)},{passive:false});
+  w.addEventListener('touchend',function(e){if(pin&&e.touches.length<2){pin=null;window.__dragLive=false}},{passive:true})}
+window.addEventListener('resize',function(){if(ui.view==='opt')pzApplyZoom()});
 function bindOptimizer(l,P,rk,drops,byDrop){var m=el('main'),svg=el('pzsvg');
   function done(){save();renderOptimizer()}
   el('pzq').oninput=function(){ui.pzq=el('pzq').value;var pos=el('pzq').selectionStart;renderOptimizer();var n=el('pzq');n.focus();try{n.setSelectionRange(pos,pos)}catch(e){}};
