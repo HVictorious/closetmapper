@@ -424,7 +424,7 @@ function kindRow(k){for(var i=0;i<DEVICE_KINDS.length;i++)if(DEVICE_KINDS[i][0]=
 function kindOpts(){return DEVICE_KINDS.map(function(k){return [k[0],k[1]]})}
 function portsTxt(d){return (d.portCount?d.portCount+(d.kind==='pdu'||d.kind==='ups'?' outlets':sfpMain(d)?' SFP+ ports':' ports'):(d.kind==='pdu'||d.kind==='ups'?'no outlets':'no ports'))+(d.sfp?' + '+d.sfp+' SFP+':'')}
 function deviceColor(d){return d.color||DEV_FALLBACK[d.kind]||'#2563eb'}
-var APP_VERSION='4.3.0'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
+var APP_VERSION='4.3.1'; // bump on every revision; the delivered file is named closet-mapper-v<version>.html
 
 var Q='"'; // double-quote char used when building the cable rows on the Labels tab
 function siteFold(){var c={};(S.sites||[]).forEach(function(st,i){if(i>0)c[st.id]=true});return c}
@@ -4090,7 +4090,7 @@ function renderOptimizer(){var m=el('main'),l=byId(S.locations,ui.loc);
     '<button id="pzAddR" title="Add another rack to the plan">+ Rack</button><button id="pzRenR">Rename</button>'+(P.racks.length>1?'<button id="pzDelR" class="dng">Remove rack</button>':'')+
     '<span style="flex:1"></span><span class="pzzoom"><button class="ib" id="pzZo" title="Zoom out (Ctrl + scroll)">−</button><span id="pzZl" class="muted">100%</span><button class="ib" id="pzZi" title="Zoom in (Ctrl + scroll)">+</button>'+
     '<button id="pzZf" title="Zoom out to show the whole rack">Whole rack</button><button id="pzZw" title="Fit the rack to the width of the page">Fit width</button></span></div><div class="pzrackwrap" id="pzrw">'+planRackSVG(P,rk,drops)+'</div>'+
-    (COARSE?'<p class="muted" style="font-size:12px">On a tablet: tap something, then tap where it goes — or press and hold, then drag. Tap a port for more.</p>':'')+'<p class="muted" style="font-size:12px"><span class="nrsw"></span> Striped ports are new line runs — not in the closet yet. Drag hardware from the right into a slot · drag any device to move it · drag a room drop onto a patch-panel port · drag a port back to the list to take it off · drag from a port to a switch port to add a cord · click a port for more.</p></div>'+
+    (COARSE?'<p class="muted" style="font-size:12px">On a tablet: tap something, then tap where it goes — or press and hold, then drag. Tap a port for more.</p>':'')+'<p class="muted" style="font-size:12px"><span class="nrsw"></span> Striped ports are new line runs — not in the closet yet. Drag hardware from the right into a slot · drag any device to move it · drag a room drop onto a patch-panel port · drag a port back to the list to take it off · drag from a port to a switch port to add a cord · click a port for more · <b>Shift + right-click</b> a port to clear it (drop and cord) at once.</p></div>'+
     '<aside class="pzhw"><div class="sideHead" style="padding:0 0 6px">Hardware</div>'+PRESETS.map(function(pr,i){return '<div class="tpl" data-ptpl="'+i+'" style="border-left-color:'+deviceColor({kind:pr.kind})+'"><span>'+esc(pr.name)+'</span><small>'+pr.h+'U</small></div>'}).join('')+'</aside></div>';
   var sel=ui.pzSel;if(sel){var what=sel.type==='drop'?(function(){var x=drops.filter(function(y){return y.id===sel.id})[0];return x?(dropName(x.label,x.room)||x.label):'drop'})():sel.type==='hw'?sel.pr.name:sel.type==='move'?sel.d.name:(byId(P.devices,sel.dev)||{name:'?'}).name+' · '+sel.num;
     var next=sel.type==='drop'?'tap a patch-panel port to place it':sel.type==='hw'?'tap an empty slot to add it':sel.type==='move'?'tap an empty slot to move it':'tap another port to connect or move it';
@@ -4204,7 +4204,14 @@ function bindOptimizer(l,P,rk,drops,byDrop){var m=el('main'),svg=el('pzsvg');
       if(d.dev===td.id)return;
       P.cords=P.cords.filter(function(c){return !((c[0]===d.dev&&c[1]===d.num)||(c[2]===d.dev&&c[3]===d.num)||(c[0]===td.id&&c[1]===tn)||(c[2]===td.id&&c[3]===tn))});
       P.cords.push([d.dev,d.num,td.id,tn]);return done()}}
-  svg.oncontextmenu=function(ev){var g=ev.target.closest&&ev.target.closest('[data-pp]');if(!g)return;ev.preventDefault();ev.stopPropagation();var v=g.getAttribute('data-pp').split(':');jackMenu(ev,v[0],+v[1])};
+  svg.oncontextmenu=function(ev){var g=ev.target.closest&&ev.target.closest('[data-pp]');if(!g)return;ev.preventDefault();ev.stopPropagation();var v=g.getAttribute('data-pp').split(':');
+    if(ev.shiftKey)return quickClear(v[0],+v[1]);jackMenu(ev,v[0],+v[1])};
+  // Shift + right-click: take the drop off the port and remove its cords in one go, no menu
+  function quickClear(dev,num){var d=byId(P.devices,dev),J=P.jacks[dev]||{},dr=drops.filter(function(x){return x.id===J[num]})[0],
+      cds=P.cords.filter(function(c){return (c[0]===dev&&c[1]===num)||(c[2]===dev&&c[3]===num)});closeCtx();
+    if(!dr&&!cds.length)return toast((d?d.name:'Port')+' · '+num+' is already empty.');
+    if(dr)delete J[num];if(cds.length)P.cords=P.cords.filter(function(c){return cds.indexOf(c)<0});
+    done();toast('Cleared '+(d?d.name:'')+' · '+num+': '+[dr?(dropName(dr.label,dr.room)||dr.label)+' taken off':'',cds.length?cds.length+' cord'+(cds.length===1?'':'s')+' removed':''].filter(Boolean).join(', ')+'. Ctrl+Z undoes it.')}
   function jackMenu(ev,dev,num){var d=byId(P.devices,dev),J=P.jacks[dev]||{},dr=drops.filter(function(x){return x.id===J[num]})[0],cd=P.cords.filter(function(c){return (c[0]===dev&&c[1]===num)||(c[2]===dev&&c[3]===num)})[0],it=[];
     if(dr)it.push(['Take '+(dropName(dr.label,dr.room)||dr.label)+' off this port',function(){delete J[num];done()}]);
     if(cd){var o=cd[0]===dev?[cd[2],cd[3]]:[cd[0],cd[1]],od=byId(P.devices,o[0]);it.push(['Remove cord to '+(od?od.name:'?')+' · '+o[1],function(){P.cords=P.cords.filter(function(c){return c!==cd});done()}])}
